@@ -48,7 +48,8 @@ PCC-VizForge/
 ├── 📋 README.md                    # You are here!
 ├── ⚙️ pyproject.toml              # Python package configuration
 ├── 🔧 Makefile                    # Development automation
-├── 📁 config/                     # YAML configuration files
+├── � doc/                        # Documentation (changelog, guides, etc.)
+├── �📁 config/                     # YAML configuration files
 │   ├── random_walk.yaml          # Random walk parameters
 │   ├── dice.yaml                 # Dice simulation settings
 │   ├── weather.yaml              # Weather generation config
