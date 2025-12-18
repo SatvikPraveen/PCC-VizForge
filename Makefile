@@ -1,55 +1,124 @@
 # Location: Makefile
 
-.PHONY: install install-dev test clean lint format check-format type-check help
+.PHONY: install install-dev test test-verbose test-coverage clean lint format \
+	check-format type-check all-checks help jupyter build publish-test publish \
+	generate-all demo pre-commit-install pre-commit-run setup clean-data clean-all test-quick
 
 # Default target
 help:
-	@echo "Available targets:"
-	@echo "  install      Install the package"
-	@echo "  install-dev  Install package with development dependencies"
-	@echo "  test         Run tests"
-	@echo "  clean        Clean generated files"
-	@echo "  lint         Run linting (flake8)"
-	@echo "  format       Format code with black"
-	@echo "  check-format Check if code is formatted"
-	@echo "  type-check   Run type checking with mypy"
-	@echo "  all-checks   Run all checks (format, lint, type, test)"
+	@echo "═══════════════════════════════════════════════════════════════"
+	@echo "PCC-VizForge - Project Management Commands"
+	@echo "═══════════════════════════════════════════════════════════════"
+	@echo ""
+	@echo "SETUP & INSTALLATION:"
+	@echo "  make setup           Setup pre-commit hooks and install dependencies"
+	@echo "  make install         Install the package"
+	@echo "  make install-dev     Install package with development dependencies"
+	@echo ""
+	@echo "TESTING & QUALITY:"
+	@echo "  make test            Run tests (pytest)"
+	@echo "  make test-verbose    Run tests with verbose output"
+	@echo "  make test-coverage   Run tests with coverage report"
+	@echo "  make lint            Run code linting (flake8)"
+	@echo "  make format          Format code with black and isort"
+	@echo "  make check-format    Check code formatting"
+	@echo "  make type-check      Run type checking with mypy"
+	@echo "  make all-checks      Run all checks (format, lint, type, test)"
+	@echo ""
+	@echo "CODE GENERATION:"
+	@echo "  make generate-all    Generate all visualizations"
+	@echo "  make demo            Run quick demo"
+	@echo ""
+	@echo "PRE-COMMIT HOOKS:"
+	@echo "  make pre-commit-install  Install pre-commit hooks"
+	@echo "  make pre-commit-run      Run pre-commit on all files"
+	@echo ""
+	@echo "CLEANUP:"
+	@echo "  make clean           Clean build and cache files"
+	@echo "  make clean-data      Clean generated data and exports"
+	@echo "  make clean-all       Clean everything"
+	@echo ""
 
-# Installation
+# ============================= SETUP =============================
+
+setup: install-dev pre-commit-install
+	@echo "✓ Project setup completed successfully!"
+
+# ============================= INSTALLATION =============================
+
 install:
+	@echo "Installing PCC-VizForge..."
 	pip install -e .
+	@echo "✓ Installation complete"
 
 install-dev:
+	@echo "Installing PCC-VizForge with development dependencies..."
 	pip install -e ".[dev]"
+	@echo "✓ Installation with dev dependencies complete"
 
-# Testing
+# ============================= TESTING =============================
+
 test:
-	pytest
+	@echo "Running tests..."
+	pytest tests/
+	@echo "✓ Tests completed"
 
 test-verbose:
-	pytest -v
+	@echo "Running tests (verbose)..."
+	pytest -v tests/
 
 test-coverage:
-	pytest --cov=src --cov-report=html --cov-report=term
+	@echo "Running tests with coverage..."
+	pytest --cov=src --cov-report=html --cov-report=term-missing tests/
+	@echo "✓ Coverage report generated in htmlcov/index.html"
 
-# Code quality
+test-quick:
+	@echo "Running quick tests..."
+	pytest -m "not slow" tests/
+
+# ============================= CODE QUALITY =============================
+
 lint:
-	flake8 src tests
+	@echo "Running code linting..."
+	flake8 src/ tests/ --count --statistics
+	@echo "✓ Linting complete"
 
 format:
-	black src tests
+	@echo "Formatting code with black and isort..."
+	black src/ tests/
+	isort src/ tests/ --profile black
+	@echo "✓ Code formatting complete"
 
 check-format:
-	black --check src tests
+	@echo "Checking code formatting..."
+	black --check src/ tests/
+	isort --check-only src/ tests/ --profile black
+	@echo "✓ Code formatting check passed"
 
 type-check:
-	mypy src
+	@echo "Running type checking with mypy..."
+	mypy src/ --ignore-missing-imports
+	@echo "✓ Type checking complete"
 
-# Combined checks
 all-checks: check-format lint type-check test
+	@echo "✓ All checks passed!"
 
-# Cleaning
+# ============================= PRE-COMMIT =============================
+
+pre-commit-install:
+	@echo "Installing pre-commit hooks..."
+	pre-commit install
+	@echo "✓ Pre-commit hooks installed"
+
+pre-commit-run:
+	@echo "Running pre-commit on all files..."
+	pre-commit run --all-files
+	@echo "✓ Pre-commit checks completed"
+
+# ============================= CLEANING =============================
+
 clean:
+	@echo "Cleaning build and cache files..."
 	rm -rf build/
 	rm -rf dist/
 	rm -rf *.egg-info/
@@ -57,34 +126,52 @@ clean:
 	rm -rf .mypy_cache/
 	rm -rf htmlcov/
 	rm -rf .coverage
-	find . -type d -name __pycache__ -exec rm -rf {} +
+	rm -rf logs/
+	find . -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true
 	find . -type f -name "*.pyc" -delete
 	find . -type f -name "*.pyo" -delete
-	rm -rf data/synthetic/*/
-	rm -rf exports/images/*
-	rm -rf exports/html/*
+	@echo "✓ Cleanup complete"
 
 clean-data:
-	rm -rf data/synthetic/*/
-	rm -rf exports/images/*
-	rm -rf exports/html/*
+	@echo "Cleaning generated data and exports..."
+	rm -rf data/synthetic/*/* 2>/dev/null || true
+	rm -rf exports/images/* 2>/dev/null || true
+	rm -rf exports/html/* 2>/dev/null || true
+	@echo "✓ Data cleanup complete"
 
-# Development utilities
+clean-all: clean clean-data
+	@echo "✓ Complete cleanup finished"
+
+# ============================= DEVELOPMENT =============================
+
 jupyter:
+	@echo "Launching Jupyter notebook..."
 	jupyter notebook notebooks/
 
-# Build and distribution
+# ============================= BUILD & DISTRIBUTION =============================
+
 build:
+	@echo "Building distribution packages..."
+	python -m pip install --upgrade build
 	python -m build
+	@echo "✓ Build complete"
 
 publish-test:
+	@echo "Publishing to test PyPI..."
+	python -m pip install --upgrade twine
 	python -m twine upload --repository testpypi dist/*
+	@echo "✓ Published to test PyPI"
 
 publish:
+	@echo "Publishing to PyPI..."
+	python -m pip install --upgrade twine
 	python -m twine upload dist/*
+	@echo "✓ Published to PyPI"
 
-# Quick generation commands
+# ============================= DATA GENERATION =============================
+
 generate-all:
+	@echo "Generating all visualizations..."
 	python -m src.cli random_walk --library matplotlib --export-type image
 	python -m src.cli random_walk --library plotly --export-type html
 	python -m src.cli dice --library matplotlib --export-type image
@@ -95,6 +182,9 @@ generate-all:
 	python -m src.cli quakes --library plotly --export-type html
 	python -m src.cli github --library matplotlib --export-type image
 	python -m src.cli github --library plotly --export-type html
+	@echo "✓ All visualizations generated"
 
 demo:
-	python -m src.cli random_walk --library matplotlib --export-type image
+	@echo "Running demo..."
+	python -m src.cli demo --library matplotlib
+	@echo "✓ Demo complete"
