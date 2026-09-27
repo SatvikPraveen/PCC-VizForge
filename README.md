@@ -93,6 +93,19 @@ result = run_experiment("github", seed=3, overrides=["data_generation.popularity
 assert verify_run(result.run_dir)["reproduced"]
 ```
 
+## Notebooks
+
+Executed tutorials in [`notebooks/`](notebooks), re-run by CI on every push:
+
+| Notebook | Topic |
+|---|---|
+| [01_random_walk](notebooks/01_random_walk.ipynb) | MSD vs theory for five models, bootstrap α, DFA, ergodicity breaking |
+| [02_dice](notebooks/02_dice.ipynb) | exact sum PMFs, χ² calibration under H₀, power against loaded dice |
+| [03_weather](notebooks/03_weather.ipynb) | Markov-chain/Gamma recovery, harmonic trend, OLS vs Newey–West coverage |
+| [04_quakes](notebooks/04_quakes.ipynb) | G-R b-value, ETAS cascades, Omori fit with censoring-corrected windows |
+| [05_github](notebooks/05_github.ipynb) | CSN power-law fit, bootstrap GOF, Vuong tests |
+| [06_reproducibility_and_validation](notebooks/06_reproducibility_and_validation.ipynb) | run manifests, `verify`, tamper detection, Monte Carlo validation |
+
 ## Reproducibility
 
 - Every random draw comes from an explicit PCG64 `Generator` built from one
