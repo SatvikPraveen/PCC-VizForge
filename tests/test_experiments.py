@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 import json
+import os
 import subprocess
 import sys
+from pathlib import Path
 
 import matplotlib
 
@@ -208,4 +210,6 @@ def test_plotly_template_available_in_fresh_process():
         "from pcc_vizforge.generators import WeatherGenerator\n"
         "WeatherPlotlyPlot().plot(WeatherGenerator(n_days=30).generate())\n"
     )
-    subprocess.run([sys.executable, "-c", code], check=True, capture_output=True)
+    src = Path(__file__).resolve().parents[1] / "src"
+    env = {**os.environ, "PYTHONPATH": os.pathsep.join([str(src), os.environ.get("PYTHONPATH", "")])}
+    subprocess.run([sys.executable, "-c", code], check=True, capture_output=True, env=env)
