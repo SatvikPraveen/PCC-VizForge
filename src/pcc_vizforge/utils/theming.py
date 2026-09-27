@@ -1,203 +1,114 @@
-"""Theming and styling utilities for PCC VizForge."""
+"""Theming helpers (thin compatibility layer over :mod:`pcc_vizforge.plots.style`)."""
 
-from typing import Dict, List, Optional, Union
+from __future__ import annotations
+
+import logging
+from typing import Any
 
 import matplotlib as mpl
 import matplotlib.pyplot as plt
+from matplotlib.axes import Axes
+from matplotlib.colors import LinearSegmentedColormap
+from matplotlib.figure import Figure
 
-# Color palettes
-COLOR_PALETTES = {
-    "default": ["#1f77b4", "#ff7f0e", "#2ca02c", "#d62728", "#9467bd"],
-    "vibrant": ["#e74c3c", "#3498db", "#2ecc71", "#f39c12", "#9b59b6"],
-    "pastel": ["#ffb3ba", "#baffc9", "#bae1ff", "#ffffba", "#ffdfba"],
-    "dark": ["#2c3e50", "#34495e", "#7f8c8d", "#95a5a6", "#bdc3c7"],
-    "scientific": ["#003f5c", "#2f4b7c", "#665191", "#a05195", "#d45087"],
-    "earth": ["#8B4513", "#228B22", "#4682B4", "#DAA520", "#CD853F"],
-    "github": ["#24292e", "#0366d6", "#28a745", "#ffd33d", "#d73a49"],
+from pcc_vizforge.exceptions import VisualizationError
+from pcc_vizforge.plots.style import CATEGORICAL, CATEGORICAL_DARK, matplotlib_rc
+
+logger = logging.getLogger(__name__)
+
+# Only CVD-validated palettes are offered; see plots/style.py.
+COLOR_PALETTES: dict[str, list[str]] = {
+    "default": list(CATEGORICAL),
+    "scientific": list(CATEGORICAL),
+    "dark": list(CATEGORICAL_DARK),
 }
 
-# Matplotlib styles
-MATPLOTLIB_STYLES = {
-    "clean": {
-        "figure.facecolor": "white",
-        "axes.facecolor": "white",
-        "axes.edgecolor": "#cccccc",
-        "axes.linewidth": 1,
-        "axes.grid": True,
-        "grid.color": "#e6e6e6",
-        "grid.linewidth": 0.5,
-        "xtick.color": "#666666",
-        "ytick.color": "#666666",
-        "text.color": "#333333",
-    },
-    "dark": {
-        "figure.facecolor": "#2e2e2e",
-        "axes.facecolor": "#2e2e2e",
-        "axes.edgecolor": "#666666",
-        "axes.linewidth": 1,
-        "axes.grid": True,
-        "grid.color": "#404040",
-        "grid.linewidth": 0.5,
-        "xtick.color": "#cccccc",
-        "ytick.color": "#cccccc",
-        "text.color": "#ffffff",
-    },
-    "minimal": {
-        "axes.spines.left": True,
-        "axes.spines.bottom": True,
-        "axes.spines.top": False,
-        "axes.spines.right": False,
-        "axes.grid": False,
-        "xtick.bottom": True,
-        "xtick.top": False,
-        "ytick.left": True,
-        "ytick.right": False,
-    }
+MATPLOTLIB_STYLES: dict[str, dict[str, Any]] = {
+    "clean": matplotlib_rc("light"),
+    "publication": matplotlib_rc("light"),
+    "dark": matplotlib_rc("dark"),
+    "minimal": {**matplotlib_rc("light"), "axes.grid": False},
 }
 
-# Plotly templates
-PLOTLY_TEMPLATES = {
-    "clean": "plotly_white",
-    "dark": "plotly_dark", 
+PLOTLY_TEMPLATES: dict[str, str] = {
+    "clean": "pcc",
+    "publication": "pcc",
+    "dark": "pcc_dark",
     "minimal": "simple_white",
-    "presentation": "presentation",
-    "seaborn": "seaborn",
 }
 
 
-def get_color_palette(name: str = "default", n_colors: Optional[int] = None) -> List[str]:
-    """Get a color palette by name.
-    
-    Args:
-        name: Name of the color palette
-        n_colors: Number of colors to return (cycles if more than available)
-        
-    Returns:
-        List of color hex codes
+def get_color_palette(name: str = "default", n_colors: int | None = None) -> list[str]:
+    """Return a categorical palette.
+
+    Colours are never cycled: requesting more colours than the palette holds
+    raises :class:`VisualizationError`, because repeated hues make series
+    indistinguishable.
     """
-    if name not in COLOR_PALETTES:
-        name = "default"
-    
-    palette = COLOR_PALETTES[name]
-    
+    palette = COLOR_PALETTES.get(name, COLOR_PALETTES["default"])
     if n_colors is None:
-        return palette
-    
-    # Cycle colors if more needed than available
-    extended_palette = []
-    for i in range(n_colors):
-        extended_palette.append(palette[i % len(palette)])
-    
-    return extended_palette
+        return list(palette)
+    if n_colors > len(palette):
+        raise VisualizationError(
+            f"Requested {n_colors} colours but palette '{name}' has {len(palette)}; "
+            "group minor categories into 'Other' or use small multiples"
+        )
+    return list(palette[:n_colors])
 
 
 def apply_style(style_name: str = "clean") -> None:
-    """Apply a predefined matplotlib style.
-    
-    Args:
-        style_name: Name of the style to apply
-    """
+    """Apply a named Matplotlib style globally."""
     if style_name in MATPLOTLIB_STYLES:
         plt.rcParams.update(MATPLOTLIB_STYLES[style_name])
-    else:
-        # Fall back to matplotlib built-in styles
-        try:
-            plt.style.use(style_name)
-        except OSError:
-            print(f"Warning: Style '{style_name}' not found, using default")
+        return
+    try:
+        plt.style.use(style_name)
+    except OSError:
+        logger.warning("Style %r not found; using 'clean'", style_name)
+        plt.rcParams.update(MATPLOTLIB_STYLES["clean"])
 
 
-def get_matplotlib_style(style_name: str = "clean") -> Dict[str, Union[str, float, bool]]:
-    """Get matplotlib style parameters.
-    
-    Args:
-        style_name: Name of the style
-        
-    Returns:
-        Dictionary of matplotlib rcParams
-    """
+def get_matplotlib_style(style_name: str = "clean") -> dict[str, Any]:
+    """rcParams dictionary for a named style."""
     return MATPLOTLIB_STYLES.get(style_name, MATPLOTLIB_STYLES["clean"])
 
 
 def get_plotly_template(template_name: str = "clean") -> str:
-    """Get Plotly template name.
-    
-    Args:
-        template_name: Name of the template
-        
-    Returns:
-        Plotly template string
-    """
-    return PLOTLY_TEMPLATES.get(template_name, "plotly_white")
+    """Plotly template name for a named style."""
+    return PLOTLY_TEMPLATES.get(template_name, "pcc")
 
 
-def create_custom_colormap(colors: List[str], name: str = "custom") -> mpl.colors.LinearSegmentedColormap:
-    """Create a custom matplotlib colormap.
-    
-    Args:
-        colors: List of color hex codes
-        name: Name for the colormap
-        
-    Returns:
-        Custom colormap
-    """
-    return mpl.colors.LinearSegmentedColormap.from_list(name, colors)
+def create_custom_colormap(colors: list[str], name: str = "custom") -> LinearSegmentedColormap:
+    """Linear colormap through ``colors``."""
+    return LinearSegmentedColormap.from_list(name, colors)
 
 
-def setup_figure_style(figsize: tuple = (12, 8), style: str = "clean", 
-                      palette: str = "default") -> plt.Figure:
-    """Setup a matplotlib figure with consistent styling.
-    
-    Args:
-        figsize: Figure size (width, height)
-        style: Style name to apply
-        palette: Color palette name
-        
-    Returns:
-        Configured matplotlib figure
-    """
+def setup_figure_style(
+    figsize: tuple[float, float] = (12, 8), style: str = "clean", palette: str = "default"
+) -> Figure:
+    """Apply ``style`` and create a figure using ``palette`` as the colour cycle."""
     apply_style(style)
-    fig = plt.figure(figsize=figsize)
-    
-    # Set color cycle
-    colors = get_color_palette(palette)
-    plt.rcParams['axes.prop_cycle'] = plt.cycler(color=colors)
-    
-    return fig
+    plt.rcParams["axes.prop_cycle"] = mpl.cycler(color=get_color_palette(palette))
+    return plt.figure(figsize=figsize)
 
 
-def format_axis_labels(ax: plt.Axes, xlabel: str = "", ylabel: str = "", 
-                      title: str = "", title_size: int = 14) -> None:
-    """Format axis labels with consistent styling.
-    
-    Args:
-        ax: Matplotlib axes object
-        xlabel: X-axis label
-        ylabel: Y-axis label
-        title: Plot title
-        title_size: Title font size
-    """
+def format_axis_labels(
+    ax: Axes, xlabel: str = "", ylabel: str = "", title: str = "", title_size: int = 11
+) -> None:
+    """Set axis labels and a left-aligned title."""
     if xlabel:
-        ax.set_xlabel(xlabel, fontsize=12, fontweight='medium')
+        ax.set_xlabel(xlabel)
     if ylabel:
-        ax.set_ylabel(ylabel, fontsize=12, fontweight='medium')
+        ax.set_ylabel(ylabel)
     if title:
-        ax.set_title(title, fontsize=title_size, fontweight='bold', pad=20)
-    
-    # Format tick labels
-    ax.tick_params(axis='both', which='major', labelsize=10)
+        ax.set_title(title, fontsize=title_size, loc="left")
 
 
-def add_watermark(ax: plt.Axes, text: str = "PCC VizForge", 
-                 position: tuple = (0.99, 0.01), alpha: float = 0.3) -> None:
-    """Add a watermark to the plot.
-    
-    Args:
-        ax: Matplotlib axes object
-        text: Watermark text
-        position: Position (x, y) in axes coordinates
-        alpha: Transparency level
-    """
-    ax.text(position[0], position[1], text, transform=ax.transAxes,
-            fontsize=8, alpha=alpha, ha='right', va='bottom',
-            style='italic', color='gray')
+def add_watermark(
+    ax: Axes, text: str = "PCC-VizForge", position: tuple[float, float] = (0.99, 0.01), alpha: float = 0.3
+) -> None:
+    """Add a small attribution mark (not used by the built-in figures)."""
+    ax.text(
+        position[0], position[1], text, transform=ax.transAxes, fontsize=7, alpha=alpha,
+        ha="right", va="bottom", style="italic", color="gray",
+    )

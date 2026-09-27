@@ -36,9 +36,9 @@ visualization:
   matplotlib:
     figsize: [15, 12]
     title: "Weather Patterns Analysis"
-    temp_color: "#e74c3c"
-    humidity_color: "#3498db"
-    precipitation_color: "#9b59b6"
+    temp_color: "#2a78d6"
+    humidity_color: "#eb6834"
+    precipitation_color: "#1baf7a"
     grid: true
     alpha: 0.8
 
@@ -47,10 +47,10 @@ visualization:
     width: 1200
     height: 800
     color_discrete_map:
-      temperature: "#e74c3c"
-      humidity: "#3498db"
-      precipitation: "#9b59b6"
-    template: "plotly_white"
+      temperature: "#2a78d6"
+      humidity: "#eb6834"
+      precipitation: "#1baf7a"
+    template: "pcc"
 
 export:
   filename_prefix: "weather_analysis"

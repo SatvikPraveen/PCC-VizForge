@@ -43,8 +43,8 @@ visualization:
   matplotlib:
     figsize: [16, 12]
     title: "Global Earthquake Analysis"
-    magnitude_colormap: "plasma"
-    depth_colormap: "viridis"
+    magnitude_colormap: "pcc_sequential"
+    depth_colormap: "pcc_sequential"
     scatter_alpha: 0.6
     grid: true
 
@@ -52,9 +52,7 @@ visualization:
     title: "Interactive Global Earthquake Map"
     width: 1200
     height: 800
-    mapbox_style: "open-street-map"
-    color_continuous_scale: "plasma"
-    template: "plotly_white"
+    template: "pcc"
 
 export:
   filename_prefix: "earthquake_analysis"

@@ -17,7 +17,7 @@ visualization:
     title: "Random Walk Simulation"
     xlabel: "Steps"
     ylabel: "Position"
-    color_scheme: ["#1f77b4", "#ff7f0e", "#2ca02c", "#d62728", "#9467bd"]
+    color_scheme: ["#2a78d6", "#eb6834", "#1baf7a", "#eda100", "#e87ba4"]
     line_style: "-"
     line_width: 2
     grid: true
@@ -30,10 +30,10 @@ visualization:
     yaxis_title: "Position"
     width: 900
     height: 600
-    color_scheme: ["#1f77b4", "#ff7f0e", "#2ca02c", "#d62728", "#9467bd"]
+    color_scheme: ["#2a78d6", "#eb6834", "#1baf7a", "#eda100", "#e87ba4"]
     line_width: 2
     show_legend: true
-    template: "plotly_white"
+    template: "pcc"
 
 export:
   filename_prefix: "random_walk"

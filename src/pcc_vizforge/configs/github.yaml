@@ -33,11 +33,11 @@ visualization:
   matplotlib:
     figsize: [16, 12]
     title: "GitHub Repository Analytics"
-    primary_color: "#24292e"
-    secondary_color: "#0366d6"
-    success_color: "#28a745"
-    warning_color: "#ffd33d"
-    danger_color: "#d73a49"
+    primary_color: "#2a78d6"
+    secondary_color: "#eb6834"
+    success_color: "#1baf7a"
+    warning_color: "#eda100"
+    danger_color: "#e87ba4"
     grid: true
     alpha: 0.8
 
@@ -46,8 +46,8 @@ visualization:
     width: 1200
     height: 900
     color_discrete_sequence:
-      ["#24292e", "#0366d6", "#28a745", "#ffd33d", "#d73a49", "#6f42c1"]
-    template: "plotly_white"
+      ["#2a78d6", "#eb6834", "#1baf7a", "#eda100", "#e87ba4", "#008300"]
+    template: "pcc"
 
 export:
   filename_prefix: "github_analytics"

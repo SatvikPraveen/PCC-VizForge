@@ -11,9 +11,9 @@ visualization:
   matplotlib:
     figsize: [14, 10]
     title: "Dice Roll Analysis"
-    bar_color: "#3498db"
-    hist_color: "#e74c3c"
-    line_color: "#2ecc71"
+    bar_color: "#2a78d6"
+    hist_color: "#eb6834"
+    line_color: "#1baf7a"
     grid: true
     alpha: 0.7
 
@@ -21,8 +21,8 @@ visualization:
     title: "Interactive Dice Roll Analysis"
     width: 1000
     height: 700
-    color_discrete_sequence: ["#3498db", "#e74c3c", "#2ecc71", "#f39c12"]
-    template: "plotly_white"
+    color_discrete_sequence: ["#2a78d6", "#eb6834", "#1baf7a", "#eda100"]
+    template: "pcc"
 
 export:
   filename_prefix: "dice_simulation"

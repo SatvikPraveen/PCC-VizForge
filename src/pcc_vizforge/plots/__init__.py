@@ -1,25 +1,38 @@
-"""Plotting modules for PCC VizForge."""
+"""Plotting: domain dashboards (Matplotlib / Plotly) and diagnostic figures.
 
-from .dice_mpl import DiceMatplotlibPlot
-from .dice_plotly import DicePlotlyPlot
-from .github_mpl import GitHubMatplotlibPlot
-from .github_plotly import GitHubPlotlyPlot
-from .quakes_mpl import EarthquakeMatplotlibPlot
-from .quakes_plotly import EarthquakePlotlyPlot
-from .random_walk_mpl import RandomWalkMatplotlibPlot
-from .random_walk_plotly import RandomWalkPlotlyPlot
-from .weather_mpl import WeatherMatplotlibPlot
-from .weather_plotly import WeatherPlotlyPlot
+Classes are imported lazily (PEP 562) so that ``import pcc_vizforge.plots.style``
+does not pull in every dashboard module.
+"""
 
-__all__ = [
-    "RandomWalkMatplotlibPlot",
-    "RandomWalkPlotlyPlot",
-    "DiceMatplotlibPlot",
-    "DicePlotlyPlot",
-    "WeatherMatplotlibPlot",
-    "WeatherPlotlyPlot",
-    "EarthquakeMatplotlibPlot",
-    "EarthquakePlotlyPlot",
-    "GitHubMatplotlibPlot",
-    "GitHubPlotlyPlot",
-]
+from __future__ import annotations
+
+import importlib
+from typing import Any
+
+_LAZY: dict[str, str] = {
+    "RandomWalkMatplotlibPlot": "random_walk_mpl",
+    "RandomWalkPlotlyPlot": "random_walk_plotly",
+    "DiceMatplotlibPlot": "dice_mpl",
+    "DicePlotlyPlot": "dice_plotly",
+    "WeatherMatplotlibPlot": "weather_mpl",
+    "WeatherPlotlyPlot": "weather_plotly",
+    "EarthquakeMatplotlibPlot": "quakes_mpl",
+    "EarthquakePlotlyPlot": "quakes_plotly",
+    "GitHubMatplotlibPlot": "github_mpl",
+    "GitHubPlotlyPlot": "github_plotly",
+}
+
+__all__ = sorted(_LAZY)
+
+
+def __getattr__(name: str) -> Any:
+    if name in _LAZY:
+        module = importlib.import_module(f"{__name__}.{_LAZY[name]}")
+        value = getattr(module, name)
+        globals()[name] = value
+        return value
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+
+
+def __dir__() -> list[str]:
+    return sorted([*globals(), *_LAZY])

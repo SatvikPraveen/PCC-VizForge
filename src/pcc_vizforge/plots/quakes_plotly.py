@@ -1,44 +1,38 @@
 """Plotly plotting for earthquake data."""
 
-from typing import Optional
 
 import pandas as pd
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
+from pcc_vizforge.plots.style import plotly_colorscale
 from pcc_vizforge.utils.io import get_export_directory, load_config
 
 
 class EarthquakePlotlyPlot:
     """Plotly plotter for earthquake data."""
-    
+
     def __init__(self, config_name: str = "quakes"):
         self.config = load_config(config_name)
         self.viz_config = self.config["visualization"]["plotly"]
         self.export_config = self.config["export"]
-        
+
     def plot(self, data: pd.DataFrame) -> go.Figure:
         """Create interactive earthquake visualization."""
         # Create main map visualization
         fig = go.Figure()
-        
+
         # Main world map with earthquakes
         fig.add_trace(
-            go.Scattermapbox(
+            go.Scattergeo(
                 lat=data["latitude"],
                 lon=data["longitude"],
                 mode='markers',
                 marker=dict(
                     size=data["magnitude"] * 4,  # Scale marker size by magnitude
                     color=data["magnitude"],
-                    colorscale=self.viz_config["color_continuous_scale"],
-                    colorbar=dict(
-                        title="Magnitude",
-                        titleside="right",
-                        tickmode="linear",
-                        tick0=data["magnitude"].min(),
-                        dtick=0.5
-                    ),
+                    colorscale=plotly_colorscale("sequential"),
+                    colorbar=dict(title=dict(text="Magnitude", side="right")),
                     opacity=0.7,
                     sizemode='diameter'
                 ),
@@ -46,20 +40,24 @@ class EarthquakePlotlyPlot:
                     lambda x: f"<b>Magnitude:</b> {x['magnitude']:.1f}<br>"
                              f"<b>Depth:</b> {x['depth_km']:.0f} km<br>"
                              f"<b>Region:</b> {x['region']}<br>"
-                             f"<b>Date:</b> {x['timestamp'].strftime('%Y-%m-%d %H:%M')}", 
+                             f"<b>Date:</b> {x['timestamp'].strftime('%Y-%m-%d %H:%M')}",
                     axis=1
                 ),
                 hovertemplate="%{text}<extra></extra>",
                 name="Earthquakes"
             )
         )
-        
+
         # Update layout for map
         fig.update_layout(
-            mapbox=dict(
-                style=self.viz_config["mapbox_style"],
-                zoom=1.2,
-                center=dict(lat=20, lon=0)
+            geo=dict(
+                projection_type="natural earth",
+                showland=True,
+                landcolor="#ebeae6",
+                showocean=True,
+                oceancolor="#fcfcfb",
+                coastlinecolor="#b9b8b3",
+                showcountries=False,
             ),
             height=self.viz_config["height"],
             width=self.viz_config["width"],
@@ -71,27 +69,27 @@ class EarthquakePlotlyPlot:
             template=self.viz_config["template"],
             showlegend=False
         )
-        
+
         return fig
-    
+
     def plot_analysis(self, data: pd.DataFrame) -> go.Figure:
         """Create detailed earthquake analysis dashboard."""
         fig = make_subplots(
             rows=2, cols=2,
             subplot_titles=(
-                "Magnitude Distribution", 
+                "Magnitude Distribution",
                 "Depth vs Magnitude",
-                "Regional Activity", 
+                "Regional Activity",
                 "Temporal Distribution"
             ),
             specs=[[{"type": "histogram"}, {"type": "scatter"}],
                    [{"type": "bar"}, {"type": "histogram"}]]
         )
-        
+
         # Magnitude distribution
         fig.add_trace(
             go.Histogram(
-                x=data["magnitude"], 
+                x=data["magnitude"],
                 nbinsx=25,
                 marker_color="darkred",
                 opacity=0.7,
@@ -99,7 +97,7 @@ class EarthquakePlotlyPlot:
             ),
             row=1, col=1
         )
-        
+
         # Depth vs Magnitude scatter
         fig.add_trace(
             go.Scatter(
@@ -108,7 +106,7 @@ class EarthquakePlotlyPlot:
                 mode='markers',
                 marker=dict(
                     color=data["magnitude"],
-                    colorscale="plasma",
+                    colorscale=plotly_colorscale("sequential"),
                     size=8,
                     opacity=0.6
                 ),
@@ -120,7 +118,7 @@ class EarthquakePlotlyPlot:
             ),
             row=1, col=2
         )
-        
+
         # Regional activity
         region_counts = data["region"].value_counts().head(10)
         fig.add_trace(
@@ -134,7 +132,7 @@ class EarthquakePlotlyPlot:
             ),
             row=2, col=1
         )
-        
+
         # Temporal distribution (hour of day)
         fig.add_trace(
             go.Histogram(
@@ -146,7 +144,7 @@ class EarthquakePlotlyPlot:
             ),
             row=2, col=2
         )
-        
+
         # Update layout
         fig.update_layout(
             height=800,
@@ -155,7 +153,7 @@ class EarthquakePlotlyPlot:
             template=self.viz_config["template"],
             showlegend=False
         )
-        
+
         # Update axis labels
         fig.update_xaxes(title_text="Magnitude", row=1, col=1)
         fig.update_yaxes(title_text="Frequency", row=1, col=1)
@@ -165,29 +163,29 @@ class EarthquakePlotlyPlot:
         fig.update_yaxes(title_text="Region", row=2, col=1)
         fig.update_xaxes(title_text="Hour of Day", row=2, col=2)
         fig.update_yaxes(title_text="Frequency", row=2, col=2)
-        
+
         return fig
-    
-    def save(self, fig: go.Figure, filename: Optional[str] = None) -> str:
+
+    def save(self, fig: go.Figure, filename: str | None = None) -> str:
         """Save the plot to HTML file."""
         if filename is None:
             filename = f"{self.export_config['filename_prefix']}_plotly.html"
-        
+
         export_dir = get_export_directory("html")
         full_path = export_dir / filename
-        
+
         fig.write_html(full_path, include_plotlyjs=self.export_config["html_include_plotlyjs"])
-        
+
         return str(full_path)
-    
-    def save_image(self, fig: go.Figure, filename: Optional[str] = None) -> str:
+
+    def save_image(self, fig: go.Figure, filename: str | None = None) -> str:
         """Save the plot to image file."""
         if filename is None:
             filename = f"{self.export_config['filename_prefix']}_plotly.{self.export_config['image_format']}"
-        
+
         export_dir = get_export_directory("images")
         full_path = export_dir / filename
-        
+
         fig.write_image(full_path, format=self.export_config['image_format'])
-        
+
         return str(full_path)
