@@ -1,11 +1,28 @@
 # Earthquake Data Configuration
 data_generation:
-  n_earthquakes: 500
-  magnitude_range: [2.0, 8.5]
+  n_earthquakes: 500 # number of background (independent) events
+  magnitude_range: [2.0, 8.5] # [Mc, Mmax] of the truncated Gutenberg-Richter law
+  b_value: 1.0 # G-R b-value; ~1 for tectonic seismicity
+  magnitude_bin: 0.0 # catalogue rounding (e.g. 0.1); 0 = continuous
   depth_range: [1.0, 700.0] # km
+  shallow_fraction: 0.7 # fraction of events in the shallow (exponential) population
+  shallow_depth_scale_km: 20.0
   lat_range: [-90, 90]
   lon_range: [-180, 180]
+  duration_days: 365.0
+  start_date: "2023-01-01"
   random_seed: 42
+
+  # ETAS-style aftershock triggering (Ogata 1988). Each event of magnitude m
+  # spawns Poisson(productivity * 10^(alpha * (m - Mc))) direct aftershocks.
+  aftershocks:
+    enabled: true
+    productivity: 0.02 # K
+    alpha: 0.8 # productivity exponent (must keep branching ratio < 1)
+    omori_c_days: 0.01 # Omori-Utsu c
+    omori_p: 1.1 # Omori-Utsu p
+    distance_km: 5.0 # spatial scale at Mc, grows as 10^(0.5 (m - Mc))
+    max_generations: 10
 
   # Geological hotspots (higher probability regions)
   hotspots:
