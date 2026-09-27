@@ -325,7 +325,7 @@ def temperature_figure(
         ax.set_xlabel("Years since start")
         ax.set_ylabel("Temperature (°C)")
         ax.set_title("Seasonal cycle and trend")
-        ax.legend()
+        ax.legend(markerscale=4, loc="lower right", ncols=3)
         return fig
 
 
