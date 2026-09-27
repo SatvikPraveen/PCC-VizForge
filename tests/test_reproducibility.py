@@ -34,11 +34,11 @@ class TestRng:
         assert make_rng(g) is g
 
     def test_does_not_touch_global_state(self):
-        np.random.seed(7)
-        expected = np.random.random()
-        np.random.seed(7)
+        np.random.seed(7)  # noqa: NPY002
+        expected = np.random.random()  # noqa: NPY002
+        np.random.seed(7)  # noqa: NPY002
         make_rng(99).random(1000)
-        assert np.random.random() == expected
+        assert np.random.random() == expected  # noqa: NPY002
 
     def test_resolve_seed_none_draws_entropy(self):
         s1, s2 = resolve_seed(None), resolve_seed(None)
@@ -53,7 +53,7 @@ class TestRng:
     def test_spawned_streams_are_reproducible_and_distinct(self):
         r1 = [g.random(5) for g in spawn_rngs(42, 4)]
         r2 = [g.random(5) for g in spawn_rngs(42, 4)]
-        for x, y in zip(r1, r2):
+        for x, y in zip(r1, r2, strict=True):
             np.testing.assert_array_equal(x, y)
         assert len({tuple(x) for x in r1}) == 4
 

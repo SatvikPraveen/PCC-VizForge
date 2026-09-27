@@ -14,13 +14,12 @@ independent, non-overlapping sequences (O'Neill, 2014; NumPy NEP 19).
 from __future__ import annotations
 
 import secrets
-from typing import Union
 
 import numpy as np
 
 from pcc_vizforge.exceptions import InvalidParameterError
 
-SeedLike = Union[int, np.integer, np.random.SeedSequence, np.random.Generator, None]
+SeedLike = int | np.integer | np.random.SeedSequence | np.random.Generator | None
 
 __all__ = ["SeedLike", "make_rng", "resolve_seed", "spawn_rngs", "spawn_seeds"]
 
