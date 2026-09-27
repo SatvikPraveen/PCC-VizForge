@@ -247,17 +247,24 @@ def bootstrap_msd_exponent(
     if np.any(lag_arr < 1) or np.any(lag_arr > n):
         raise InvalidParameterError(f"lags must lie in [1, {n}]")
     sq = np.sum(pos[:, lag_arr - 1] ** 2, axis=-1)  # (walks, lags)
-    point = fit_msd_exponent(lag_arr, sq.mean(axis=0))
     rng = make_rng(seed)
     idx = rng.integers(0, w, size=(n_bootstrap, w))
     boot_msd = sq[idx].mean(axis=1)  # (n_bootstrap, lags)
+    # With few walks (e.g. 1-D lattice walks) a resample can have zero MSD at
+    # some lag; use only lags that are positive in every resample so that the
+    # point estimate and all replicates are fitted on the same design.
+    usable = np.all(boot_msd > 0, axis=0)
+    if usable.sum() < 3:
+        raise InvalidParameterError(
+            "too few lags with positive MSD in every bootstrap resample; "
+            "increase n_walks"
+        )
+    lag_arr, sq, boot_msd = lag_arr[usable], sq[:, usable], boot_msd[:, usable]
+    point = fit_msd_exponent(lag_arr, sq.mean(axis=0))
     log_x = np.log(lag_arr.astype(float))
     xc = log_x - log_x.mean()
-    alphas = (
-        (np.log(boot_msd) - np.log(boot_msd).mean(axis=1, keepdims=True))
-        @ xc
-        / (xc @ xc)
-    )
+    log_boot = np.log(boot_msd)
+    alphas = (log_boot - log_boot.mean(axis=1, keepdims=True)) @ xc / (xc @ xc)
     q = (1 - confidence) / 2
     lo, hi = np.quantile(alphas, [q, 1 - q])
     return PowerLawFit(

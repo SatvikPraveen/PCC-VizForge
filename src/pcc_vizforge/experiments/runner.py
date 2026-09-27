@@ -56,6 +56,8 @@ DOMAINS: dict[str, type[BaseGenerator[Any]]] = {
 
 def _jsonable(obj: Any) -> Any:
     """Recursively convert NumPy / pandas objects into JSON-friendly values."""
+    if hasattr(obj, "to_dict") and not isinstance(obj, (pd.DataFrame, pd.Series)):
+        return _jsonable(obj.to_dict())
     if isinstance(obj, Mapping):
         return {str(k): _jsonable(v) for k, v in obj.items()}
     if isinstance(obj, (list, tuple)):
@@ -86,10 +88,12 @@ def _analyze_random_walk(
     lags = diffusion.log_spaced_lags(p.n_steps + 1)
     lags = lags[lags <= p.n_steps]
     if p.n_walks >= 2 and lags.size >= 3:
-        fit = diffusion.bootstrap_msd_exponent(
-            pos, lags=lags, n_bootstrap=500, seed=seed
-        )
-        out["msd_exponent"] = fit.to_dict()
+        try:
+            out["msd_exponent"] = diffusion.bootstrap_msd_exponent(
+                pos, lags=lags, n_bootstrap=500, seed=seed
+            )
+        except PccVizForgeError as exc:
+            out["msd_exponent_skipped"] = str(exc)
         theo = theoretical_msd(p, np.array([1.0, 2.0]))
         if np.all(np.isfinite(theo)) and p.model in ("lattice", "gaussian", "fbm"):
             out["theoretical_exponent"] = 2 * p.hurst if p.model == "fbm" else 1.0
@@ -172,18 +176,7 @@ def _figures(
             msd, sem = diffusion.ensemble_msd(pos)
             t = np.arange(1, msd.size + 1, dtype=float)
             theo = theoretical_msd(gen.params, t)
-            fit = None
-            if "msd_exponent" in metrics:
-                m = metrics["msd_exponent"]
-                fit = diffusion.PowerLawFit(
-                    m["alpha"],
-                    m["alpha_stderr"],
-                    tuple(m["alpha_ci"]),
-                    m["prefactor"],
-                    m["r_squared"],
-                    m["n_points"],
-                    tuple(m["x_range"]),
-                )
+            fit = metrics.get("msd_exponent")
             figs["msd"] = D.msd_figure(
                 t, msd, sem, theory=theo if np.all(np.isfinite(theo)) else None, fit=fit
             )
@@ -304,7 +297,8 @@ def run_experiment(
     data_path = run_dir / "data.csv"
     df.to_csv(data_path, index=False, lineterminator="\n")
 
-    metrics = analyze(domain, gen, df, used_seed)
+    raw_metrics = ANALYZERS[domain](gen, df, used_seed)
+    metrics = _jsonable(raw_metrics)
     metrics_path = run_dir / "metrics.json"
     metrics_path.write_text(
         json.dumps(metrics, indent=2, sort_keys=True) + "\n", encoding="utf-8"
@@ -316,7 +310,8 @@ def run_experiment(
 
         fig_dir = run_dir / "figures"
         fig_dir.mkdir()
-        for name, fig in _figures(domain, gen, df, metrics).items():
+        # Figures consume the raw analysis objects, not their JSON rendering.
+        for name, fig in _figures(domain, gen, df, raw_metrics).items():
             for fmt in formats:
                 path = fig_dir / f"{name}.{fmt}"
                 # Fixed metadata keeps PDF/SVG bytes deterministic.

@@ -69,6 +69,14 @@ def test_run_and_verify_every_domain(domain, tmp_path):
     assert report["reproduced"] and all(report["integrity"].values())
 
 
+def test_default_random_walk_config_with_few_walks(tmp_path):
+    """Regression: 5 lattice walks made bootstrap MSDs zero -> NaN CI -> crash."""
+    r = run_experiment("random_walk", seed=12345, output_dir=tmp_path)
+    lo, hi = r.metrics["msd_exponent"]["alpha_ci"]
+    assert isinstance(lo, float) and lo < hi
+    assert r.figures
+
+
 def test_verify_detects_tampering(tmp_path):
     r = run_experiment(
         "dice", overrides=SMALL["dice"], seed=1, output_dir=tmp_path, figures=False
