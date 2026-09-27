@@ -87,6 +87,18 @@ class TestEstimators:
         # ignoring the bin correction is biased upward
         assert b_value_mle(m, 2.0).b_value > 1.04
 
+    def test_small_sample_bias_and_correction(self):
+        """E[b_hat] = b n/(n-1) for the Aki MLE; the unbiased variant removes it."""
+        n = 20
+        raw, unb = [], []
+        for rng in spawn_rngs(30, 3000):
+            m = truncated_gr_sample(rng, n, 1.0, 2.0)
+            raw.append(b_value_mle(m, 2.0).b_value)
+            unb.append(b_value_mle(m, 2.0, unbiased=True).b_value)
+        assert np.mean(raw) == pytest.approx(n / (n - 1), abs=0.012)
+        assert np.mean(unb) == pytest.approx(1.0, abs=0.012)
+        assert b_value_mle(m, 2.0, unbiased=True).method == "aki-utsu-unbiased"
+
     def test_truncated_mle_corrects_aki_bias(self):
         m = truncated_gr_sample(make_rng(5), 20_000, 1.0, 2.0, 3.0)
         aki = b_value_mle(m, 2.0)

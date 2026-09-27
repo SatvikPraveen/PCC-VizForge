@@ -172,6 +172,7 @@ def b_value_mle(
     *,
     bin_width: float = 0.0,
     confidence: float = 0.95,
+    unbiased: bool = False,
 ) -> BValueEstimate:
     """Aki-Utsu maximum-likelihood b-value for events with M >= ``mc``.
 
@@ -179,6 +180,10 @@ def b_value_mle(
 
     The standard error is that of Shi & Bolt (1982). For continuous
     magnitudes use ``bin_width=0``.
+
+    The MLE is biased upward by the factor n/(n-1) (the reciprocal of a
+    Gamma-distributed mean); ``unbiased=True`` multiplies by (n-1)/n, which
+    matters for small catalogues (≈ 2 % at n = 50).
     """
     m = np.asarray(magnitudes, dtype=float)
     m = m[m >= mc - 1e-9]
@@ -190,6 +195,8 @@ def b_value_mle(
     if denom <= 0:
         raise InvalidParameterError("mean magnitude must exceed Mc - bin_width/2")
     b = LOG10_E / denom
+    if unbiased:
+        b *= (n - 1) / n
     se = 2.30 * b**2 * np.sqrt(np.sum((m - mean) ** 2) / (n * (n - 1)))
     z = stats.norm.ppf(0.5 + confidence / 2)
     a = np.log10(n) + b * mc
@@ -200,7 +207,7 @@ def b_value_mle(
         (float(b - z * se), float(b + z * se)),
         int(n),
         float(mc),
-        "aki-utsu",
+        "aki-utsu-unbiased" if unbiased else "aki-utsu",
     )
 
 
