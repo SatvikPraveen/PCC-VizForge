@@ -1,442 +1,170 @@
 # PCC-VizForge
 
-**A Personal Data Visualization Playground**
+**Reproducible simulation, statistical inference and visualisation for canonical stochastic processes.**
 
-[![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Personal Project](https://img.shields.io/badge/type-personal%20project-green.svg)](https://github.com/SatvikPraveen/PCC-VizForge)
+[![CI](https://github.com/SatvikPraveen/PCC-VizForge/actions/workflows/ci.yml/badge.svg)](https://github.com/SatvikPraveen/PCC-VizForge/actions/workflows/ci.yml)
+[![Python 3.10–3.13](https://img.shields.io/badge/python-3.10%E2%80%933.13-blue.svg)](pyproject.toml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Code style: ruff](https://img.shields.io/badge/code%20style-ruff-000000.svg)](https://github.com/astral-sh/ruff)
+[![Typed: mypy](https://img.shields.io/badge/typed-mypy-2a78d6.svg)](pyproject.toml)
 
-> _"Creating beautiful visualizations from synthetic data across multiple domains - because data should tell compelling stories."_
+PCC-VizForge generates synthetic data from five well-studied stochastic
+models, estimates their parameters with the standard estimators from each
+field, and records every run so that anyone can regenerate it bit-for-bit.
+Because the true parameters of every generator are known, the package also
+checks its own estimators: bias, RMSE and confidence-interval coverage are
+measured by Monte Carlo ([`docs/validation.md`](docs/validation.md)).
 
-## 🎯 About This Project
+| Domain | Generative model | Inference |
+|---|---|---|
+| **Random walks** | lattice, Gaussian, persistent, Lévy flight, fractional Brownian motion (exact Davies–Harte) | ensemble and time-averaged MSD, anomalous exponent with walk-bootstrap CI, ergodicity breaking, DFA, first passage |
+| **Dice** | *n* fair or loaded dice | exact sum PMF by convolution, χ² GOF with Cochran pooling, runs test |
+| **Earthquakes** | truncated Gutenberg–Richter magnitudes, sphere-uniform + hotspot epicentres, ETAS-style Omori–Utsu aftershock cascades | Aki–Utsu and truncated (Page) b-value MLEs, M<sub>c</sub>, Omori (c, p) MLE, clustering |
+| **Weather** | WGEN: Markov-chain precipitation, Gamma amounts, AR(1) temperature anomalies, seasonal harmonic, warming trend, dew-point humidity | harmonic regression with Newey–West SEs, Mann–Kendall (Hamed–Rao / pre-whitening), Theil–Sen, Markov-chain MLE |
+| **GitHub repositories** | Pareto latent popularity → Poisson stars; Beta fork propensity; NB commits | Clauset–Shalizi–Newman power-law fit, bootstrap GOF, Vuong tests vs lognormal/exponential |
 
-**PCC-VizForge** is my personal exploration into the world of data visualization and synthetic data generation. This toolkit demonstrates my ability to:
+The mathematics for every row is in [`docs/methods.md`](docs/methods.md).
 
-- Generate realistic synthetic datasets across diverse domains
-- Create publication-quality static visualizations with Matplotlib
-- Build interactive web-ready charts with Plotly
-- Implement modular, scalable code architecture
-- Apply statistical analysis and data science concepts
+<p align="center">
+  <img src="docs/figures/msd.png" width="48%" alt="Log-log MSD of fractional Brownian motion with theory and bootstrap fit">
+  <img src="docs/figures/gutenberg_richter.png" width="48%" alt="Gutenberg-Richter frequency-magnitude distribution with fitted b-value">
+  <img src="docs/figures/stars_ccdf.png" width="48%" alt="Complementary CDF of star counts with power-law tail fit">
+  <img src="docs/figures/dice.png" width="48%" alt="Dice-sum frequencies with Wilson intervals against the exact PMF">
+</p>
 
-This project serves as both a learning exercise and a showcase of data visualization capabilities, perfect for educational purposes, prototyping, or when you need realistic data without privacy concerns.
-
-## 🚀 Key Features
-
-### 🎲 Multi-Domain Data Generation
-
-- **Random Walks**: Stochastic processes with 1D/2D simulations and statistical analysis
-- **Dice Simulations**: Probability theory demonstrations with Gutenberg-Richter law applications
-- **Weather Patterns**: Realistic meteorological data with seasonal variations and extreme events
-- **Earthquake Data**: Seismic activity simulations following geological principles
-- **GitHub Analytics**: Repository metrics and developer activity patterns
-
-### 📊 Dual Visualization Approach
-
-- **Matplotlib**: Professional static plots for research papers and presentations
-- **Plotly**: Interactive dashboards with hover effects, zooming, and web deployment
-
-### 💾 Flexible Export Options
-
-- **Images**: High-resolution PNG/JPG for publications
-- **Interactive HTML**: Web-ready visualizations for portfolios
-- **Data Formats**: CSV/JSON for further analysis and sharing
-
-## 🛠️ Project Architecture
-
-```
-PCC-VizForge/
-├── 📋 README.md                    # You are here!
-├── ⚙️ pyproject.toml              # Python package configuration
-├── 🔧 Makefile                    # Development automation
-├── � doc/                        # Documentation (changelog, guides, etc.)
-├── �📁 config/                     # YAML configuration files
-│   ├── random_walk.yaml          # Random walk parameters
-│   ├── dice.yaml                 # Dice simulation settings
-│   ├── weather.yaml              # Weather generation config
-│   ├── quakes.yaml               # Earthquake data parameters
-│   └── github.yaml               # GitHub statistics config
-├── 🧬 src/                        # Core source code
-│   ├── generators/               # Synthetic data generators
-│   │   ├── random_walk.py       # Stochastic process simulation
-│   │   ├── dice.py              # Probability distributions
-│   │   ├── weather.py           # Meteorological data
-│   │   ├── quakes.py            # Seismic activity
-│   │   └── github.py            # Repository analytics
-│   ├── plots/                   # Visualization modules
-│   │   ├── *_mpl.py            # Matplotlib implementations
-│   │   └── *_plotly.py         # Plotly implementations
-│   ├── utils/                   # Shared utilities
-│   │   ├── io.py               # Data I/O operations
-│   │   └── theming.py          # Consistent styling
-│   └── cli.py                  # Command-line interface
-├── 📊 data/synthetic/            # Generated datasets
-│   ├── random_walk/             # Random walk data
-│   ├── dice/                    # Dice roll results
-│   ├── weather/                 # Weather time series
-│   ├── quakes/                  # Earthquake catalogs
-│   └── github/                  # Repository metrics
-├── 🎨 exports/                   # Output visualizations
-│   ├── images/                  # Static plots (PNG/JPG)
-│   └── html/                    # Interactive charts
-├── 📓 notebooks/                 # Jupyter analysis notebooks
-│   ├── 01_random_walk.ipynb     # Random walk analysis
-│   ├── 02_dice.ipynb            # Probability simulations
-│   ├── 03_weather.ipynb         # Weather data exploration
-│   ├── 04_quakes.ipynb          # Seismic analysis
-│   └── 05_github.ipynb          # Repository analytics
-└── 🧪 tests/                     # Unit tests
-    ├── test_generators.py       # Data generation tests
-    └── test_plots.py            # Visualization tests
-```
-
-## 🚀 Quick Start
-
-### Installation
+## Installation
 
 ```bash
-# Clone my repository
 git clone https://github.com/SatvikPraveen/PCC-VizForge.git
 cd PCC-VizForge
-
-# Install the package
-pip install -e .
-
-# Or use the setup script
-chmod +x setup_pcc_vizforge.sh
-./setup_pcc_vizforge.sh
+python -m pip install -e ".[dev]"   # or: pip install -e .  (runtime only)
 ```
 
-### Command Line Usage
+Requires Python ≥ 3.10. Static image export from Plotly needs the optional
+`export` extra (`kaleido`).
+
+## Quick start
+
+### Command line
 
 ```bash
-# Generate a random walk visualization
-pcc-vizforge random_walk --library matplotlib --export-type image
+# Simulate, analyse and plot into a self-contained run directory
+pcc-vizforge run quakes --seed 7 --set data_generation.b_value=0.8 --format png --format pdf
 
-# Create interactive dice probability analysis
-pcc-vizforge dice --library plotly --export-type html
+# Regenerate from the manifest and check the data hash
+pcc-vizforge verify runs/quakes-<timestamp>-<id>
 
-# Build a weather dashboard
-pcc-vizforge weather --library plotly --export-type html
+# Monte Carlo validation of the estimators
+pcc-vizforge validate b_value --replicates 500
 
-# Generate earthquake analysis
-pcc-vizforge quakes --library matplotlib --export-type image
-
-# Create GitHub repository analytics
-pcc-vizforge github --library plotly --export-type html
-
-# Run a complete demonstration
-pcc-vizforge demo
+# Overview dashboards (Matplotlib PNG or interactive Plotly HTML)
+pcc-vizforge dashboard weather --library plotly --export-type html
 ```
 
-### Python API
+Every command accepts `--set key.path=value` overrides (values are parsed as
+YAML) and `--config my.yaml`. Run `pcc-vizforge --help` for the full list.
+
+### Python
 
 ```python
-from src.generators.random_walk import RandomWalkGenerator
-from src.plots.random_walk_mpl import RandomWalkMatplotlib
-
-# Generate synthetic random walk data
-config = {'n_steps': 1000, 'n_walks': 5, 'step_size': 1.0}
-generator = RandomWalkGenerator(config)
-walk_data = generator.generate_1d_walk(n_steps=1000)
-
-# Create visualization
-plotter = RandomWalkMatplotlib(config)
-fig, ax = plt.subplots(figsize=(12, 8))
-plotter.plot_1d_timeseries(walk_data, ax=ax)
-plt.show()
-```
-
-### Jupyter Notebooks
-
-```bash
-# Launch Jupyter and explore the analysis notebooks
-jupyter notebook notebooks/
-
-# Or explore specific domains
-jupyter notebook notebooks/01_random_walk.ipynb
-jupyter notebook notebooks/03_weather.ipynb
-```
-
-## 📊 Visualization Showcase
-
-### 1. Random Walk Analysis 🚶‍♂️
-
-- **1D Time Series**: Multiple trajectory comparisons with statistical convergence
-- **2D Spatial Paths**: Beautiful walk patterns with start/end markers
-- **Statistical Analysis**: Mean square displacement and diffusion coefficients
-- **Interactive Features**: Hover data, zoom controls, animation sequences
-
-### 2. Dice Probability Simulations 🎲
-
-- **Frequency Distributions**: Single die and multiple dice sum analysis
-- **Convergence Demonstrations**: Law of large numbers visualizations
-- **Theoretical vs Empirical**: Chi-square goodness of fit testing
-- **Interactive Probability**: Dynamic probability calculators
-
-### 3. Weather Pattern Analysis 🌦️
-
-- **Time Series Decomposition**: Trend, seasonal, and residual components
-- **Climate Comparisons**: Temperate, tropical, arid, and polar zones
-- **Extreme Events**: Heatwaves, cold snaps, and storm systems
-- **3D Weather Space**: Multi-parameter relationship exploration
-
-### 4. Earthquake Seismology 🌍
-
-- **Magnitude-Frequency**: Gutenberg-Richter law demonstrations
-- **Spatial Clustering**: Geographic hotspot identification using DBSCAN
-- **Aftershock Analysis**: Omori's law decay patterns
-- **Interactive Maps**: Global seismic activity with magnitude scaling
-
-### 5. GitHub Repository Analytics 📈
-
-- **Development Patterns**: Commit frequency and contributor analysis
-- **Collaboration Networks**: Developer interaction graphs
-- **Repository Health**: Comprehensive scoring system
-- **Project Evolution**: Timeline visualization of repository growth
-
-## ⚙️ Configuration System
-
-Each domain has dedicated YAML configuration files for easy customization:
-
-```yaml
-# config/random_walk.yaml
-data_generation:
-  n_steps: 1000
-  n_walks: 5
-  step_size: 1.0
-  random_seed: 42
-
-visualization:
-  matplotlib:
-    figsize: [12, 8]
-    style: "seaborn-v0_8"
-    colors: ["#1f77b4", "#ff7f0e", "#2ca02c", "#d62728", "#9467bd"]
-
-  plotly:
-    template: "plotly_white"
-    width: 900
-    height: 600
-    animation_duration: 1000
-```
-
-## 🎨 Theming and Aesthetics
-
-Built-in themes for consistent, professional visualizations:
-
-```python
-from src.utils.theming import get_plot_theme, apply_style
-
-# Available themes
-themes = ['clean', 'dark', 'minimal', 'scientific', 'vibrant']
-
-# Apply theme
-theme = get_plot_theme('clean')
-apply_style(theme)
-
-# Custom color palettes
-colors = theme.get_color_palette('qualitative', n_colors=8)
-```
-
-## 🧪 Development Workflow
-
-### Available Make Commands
-
-```bash
-make install-dev    # Install with development dependencies
-make test          # Run comprehensive unit tests
-make lint          # Code quality checks (flake8, mypy)
-make format        # Auto-format code with black
-make clean         # Remove generated files and __pycache__
-make demo          # Quick demonstration of all features
-make docs          # Generate documentation
-```
-
-### Testing and Quality Assurance
-
-```bash
-# Run the full test suite
-pytest tests/ -v --cov=src --cov-report=html
-
-# Test specific modules
-pytest tests/test_generators.py -k "test_random_walk"
-pytest tests/test_plots.py -k "test_matplotlib_plots"
-
-# Code formatting and linting
-black src/ tests/
-flake8 src/ tests/ --max-line-length=100
-mypy src/ --ignore-missing-imports
-```
-
-## 📈 Advanced Examples
-
-### Multi-Scenario Analysis
-
-```python
-from src.generators.weather import WeatherGenerator
-
-# Generate multiple climate scenarios
-generator = WeatherGenerator()
-scenarios = {
-    'tropical': {'temperature_base': 28, 'humidity_base': 85},
-    'temperate': {'temperature_base': 15, 'humidity_base': 65},
-    'arid': {'temperature_base': 25, 'humidity_base': 30}
-}
-
-results = {}
-for climate, params in scenarios.items():
-    data = generator.generate_climate_specific_data(
-        climate_type=climate, **params
-    )
-    results[climate] = data
-```
-
-### Custom Visualization Pipeline
-
-```python
-from src.plots.quakes_plotly import QuakePlotly
-from src.utils.io import save_data, load_data
-
-# Load earthquake data
-quake_data = load_data('data/synthetic/quakes/earthquake_catalog.csv')
-
-# Create interactive 3D visualization
-plotter = QuakePlotly()
-fig = plotter.plot_3d_seismicity(quake_data)
-
-# Customize and save
-fig.update_layout(
-    title="Global Seismic Activity - Interactive 3D View",
-    scene=dict(bgcolor='black'),
-    template='plotly_dark'
-)
-fig.write_html('exports/html/custom_earthquake_3d.html')
-```
-
-### Statistical Analysis Integration
-
-```python
-from scipy import stats
 import numpy as np
+from pcc_vizforge.generators import RandomWalkGenerator
+from pcc_vizforge.generators.random_walk import frame_to_positions
+from pcc_vizforge.analysis.diffusion import bootstrap_msd_exponent
 
-# Analyze dice rolling fairness
-dice_data = load_data('data/synthetic/dice/all_dice_rolls.csv')
-single_die = dice_data['single_die'].dropna()
-
-# Chi-square goodness of fit test
-observed = [np.sum(single_die == i) for i in range(1, 7)]
-expected = [len(single_die) / 6] * 6
-chi2_stat, p_value = stats.chisquare(observed, expected)
-
-print(f"Chi-square statistic: {chi2_stat:.4f}")
-print(f"P-value: {p_value:.4f}")
-print(f"Fair die? {'Yes' if p_value > 0.05 else 'No'}")
+gen = RandomWalkGenerator(model="fbm", hurst=0.3, n_walks=200, n_steps=1000, dimensions=2)
+df = gen.generate(seed=42)                      # tidy DataFrame; df.attrs["provenance"] records the inputs
+fit = bootstrap_msd_exponent(frame_to_positions(df), seed=0)
+print(f"alpha = {fit.alpha:.3f}, 95% CI {fit.alpha_ci}, regime: {fit.regime}")  # true alpha = 2H = 0.6
 ```
 
-## 🎯 Personal Learning Outcomes
+```python
+from pcc_vizforge.generators import EarthquakeGenerator
+from pcc_vizforge.analysis.seismology import b_value_mle
 
-Through this project, I've demonstrated proficiency in:
+quakes = EarthquakeGenerator(n_earthquakes=5000, b_value=1.1).generate(seed=1)
+print(b_value_mle(quakes["magnitude"], mc=2.0))   # b, a, Shi–Bolt SE, CI
+```
 
-### Technical Skills
+```python
+from pcc_vizforge.experiments import run_experiment, verify_run
 
-- **Data Generation**: Synthetic data creation following statistical distributions
-- **Visualization**: Both static (Matplotlib) and interactive (Plotly) plotting
-- **Statistical Analysis**: Hypothesis testing, regression analysis, clustering
-- **Software Architecture**: Modular design with clear separation of concerns
-- **Testing**: Unit tests with pytest and code coverage analysis
+result = run_experiment("github", seed=3, overrides=["data_generation.popularity_exponent=2.3"])
+assert verify_run(result.run_dir)["reproduced"]
+```
 
-### Domain Knowledge
+## Reproducibility
 
-- **Probability Theory**: Random processes, central limit theorem, statistical distributions
-- **Meteorology**: Weather patterns, seasonal analysis, extreme event modeling
-- **Seismology**: Earthquake statistics, magnitude-frequency relationships, spatial analysis
-- **Software Engineering**: Development metrics, collaboration patterns, repository health
+- Every random draw comes from an explicit PCG64 `Generator` built from one
+  recorded seed. Replicates use `SeedSequence.spawn`, and NumPy's global
+  state is never touched.
+- A run writes its resolved `config.yaml`, `data.csv`, `metrics.json`,
+  `figures/` and a `manifest.json` containing the seed, config hash,
+  dependency versions, git commit and a SHA-256 for every file.
+- `pcc-vizforge verify` regenerates the data and compares hashes. CI runs and
+  verifies every domain on every push.
+- Configuration is validated into typed, frozen dataclasses; unknown keys
+  are rejected.
 
-### Best Practices
+Details and the exact scope of the guarantee are in
+[`docs/reproducibility.md`](docs/reproducibility.md).
 
-- **Code Quality**: Type hints, documentation, consistent styling
-- **Configuration Management**: YAML-based settings for reproducibility
-- **Data Pipeline**: ETL processes with validation and error handling
-- **Version Control**: Structured git workflow with meaningful commits
+## Validation highlights
 
-## 🤝 Contributing
+From [`docs/validation.md`](docs/validation.md), 500 replicates per setting:
 
-While this is a personal project, I welcome feedback, suggestions, and contributions:
+| Estimator | Result |
+|---|---|
+| Aki b-value, n = 1000 | bias +0.003, RMSE 0.032, 95 % CI coverage 0.946 |
+| fBm exponent (walk bootstrap), H = 0.75 | bias +0.003, coverage 0.942 |
+| Discrete power-law α = 3.0, n = 1000 | bias +0.006, coverage 0.956 |
+| χ² dice-sum test under H₀ | size 0.042–0.062 at α = 0.05 |
+| Trend SE with AR(1) noise, φ = 0.7 | OLS coverage 0.556 → Newey–West 0.904 |
 
-1. **Fork** the repository
-2. **Create** a feature branch (`git checkout -b feature/awesome-addition`)
-3. **Commit** your changes (`git commit -m 'Add awesome feature'`)
-4. **Push** to the branch (`git push origin feature/awesome-addition`)
-5. **Open** a Pull Request with detailed description
+Validation found, and fixed, several estimators that under-covered:
+- regression CIs for MSD exponents;
+- continuous-formula SEs for discrete power laws;
+- OLS trend SEs under autocorrelation.
 
-### Development Setup
+The limitations that remain are documented, not hidden.
+
+## Project layout
+
+```
+src/pcc_vizforge/
+├── generators/      # seeded simulators (BaseGenerator + 5 domains)
+├── analysis/        # inference, diffusion, probability, seismology, timeseries, heavy_tails
+├── experiments/     # run pipeline, verification, Monte Carlo validation studies
+├── plots/           # publication style, diagnostic figures, Matplotlib/Plotly dashboards
+├── configs/         # bundled YAML configurations
+├── rng.py           # seed management and independent streams
+├── provenance.py    # run manifests, hashing, environment capture
+└── cli.py           # `pcc-vizforge` command
+tests/               # 300+ tests incl. statistical checks against theory
+docs/                # methods, validation, reproducibility, references.bib, figures
+notebooks/           # worked examples
+scripts/             # figure regeneration
+```
+
+## Development
 
 ```bash
-git clone https://github.com/SatvikPraveen/PCC-VizForge.git
-cd PCC-VizForge
-make install-dev
-make test
+make install-dev   # editable install + pre-commit hooks
+make check         # ruff, mypy, full test suite
+make test-fast     # skip slow Monte Carlo tests
+make coverage      # coverage report (CI requires >= 85 %)
+make runs verify   # run + verify every domain with a fixed seed
+make validate      # full validation studies
 ```
 
-## 📚 Educational Resources
+See [`CONTRIBUTING.md`](CONTRIBUTING.md) for guidelines.
 
-This project can serve as a learning resource for:
+## Citing
 
-- **Data Science Students**: Real-world data generation and analysis examples
-- **Visualization Enthusiasts**: Best practices for both static and interactive plots
-- **Python Developers**: Clean, modular code architecture patterns
-- **Statistics Learners**: Applied statistical concepts with visual demonstrations
+If you use PCC-VizForge in academic work, please cite it using the metadata
+in [`CITATION.cff`](CITATION.cff). GitHub's "Cite this repository" button
+generates APA and BibTeX from that file.
 
-## 🔮 Future Enhancements
+## License
 
-Potential areas for expansion:
-
-- [ ] **Time Series Forecasting**: ARIMA, LSTM models for weather/earthquake prediction
-- [ ] **Machine Learning Integration**: Clustering, classification, anomaly detection
-- [ ] **Real Data Integration**: APIs for live data feeds (weather, seismic, GitHub)
-- [ ] **Web Dashboard**: Flask/Streamlit app for interactive exploration
-- [ ] **3D Visualizations**: Advanced 3D plotting with better interaction
-- [ ] **Performance Optimization**: Cython/Numba for large dataset handling
-
-## 📄 License
-
-This project is licensed under the **MIT License** - see the [LICENSE](LICENSE) file for details.
-
-**What this means:**
-
-- ✅ Commercial use allowed
-- ✅ Modification allowed
-- ✅ Distribution allowed
-- ✅ Private use allowed
-- ❗ License and copyright notice required
-
-## 🙏 Acknowledgments
-
-- **Libraries**: Built with love using [Matplotlib](https://matplotlib.org/), [Plotly](https://plotly.com/), [NumPy](https://numpy.org/), [Pandas](https://pandas.pydata.org/), and [SciPy](https://scipy.org/)
-- **Inspiration**: Scientific visualization best practices and educational data science resources
-- **Community**: Stack Overflow, GitHub, and the broader Python data science community
-
-## 📞 Connect With Me
-
-- 🐙 **GitHub**: [@SatvikPraveen](https://github.com/SatvikPraveen)
-- 💼 **LinkedIn**: Connect for professional discussions about data science and visualization
-- 🐛 **Issues**: Report bugs or request features via [GitHub Issues](https://github.com/SatvikPraveen/PCC-VizForge/issues)
-
----
-
-**"Data visualization is not just about making pretty charts - it's about revealing the hidden stories within data and making complex concepts accessible to everyone."**
-
-_Built with ❤️ and lots of ☕ by Satvik Praveen_
-
----
-
-### 🔧 Quick Reference
-
-| Command                       | Description                |
-| ----------------------------- | -------------------------- |
-| `make demo`                   | Run complete demonstration |
-| `pcc-vizforge --help`         | Show all CLI options       |
-| `jupyter notebook notebooks/` | Explore analysis notebooks |
-| `make test`                   | Run comprehensive tests    |
-| `make clean && make demo`     | Fresh start demonstration  |
-
-**Star ⭐ this repository if you find it useful for your data visualization journey!**
+MIT — see [`LICENSE`](LICENSE).

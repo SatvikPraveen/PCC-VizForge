@@ -1,285 +1,97 @@
 # Contributing to PCC-VizForge
 
-Thank you for your interest in contributing to PCC-VizForge! This document provides guidelines and instructions for contributing.
+Thanks for your interest in improving PCC-VizForge! This guide covers the
+development setup, the standards every change must meet, and how to add new
+models and estimators.
 
-## Code of Conduct
-
-Please be respectful and constructive in all interactions with other contributors.
-
-## Getting Started
-
-### Prerequisites
-
-- Python 3.8 or higher
-- pip/conda for package management
-- Git for version control
-
-### Development Setup
-
-1. **Clone the repository:**
-   ```bash
-   git clone https://github.com/SatvikPraveen/PCC-VizForge.git
-   cd PCC-VizForge
-   ```
-
-2. **Set up the development environment:**
-   ```bash
-   make setup  # Installs dependencies and pre-commit hooks
-   ```
-
-3. **Verify installation:**
-   ```bash
-   make all-checks  # Run all quality checks
-   ```
-
-## Development Workflow
-
-### 1. Creating a Feature Branch
+## Setup
 
 ```bash
-git checkout -b feature/your-feature-name
-# or
-git checkout -b fix/your-bug-fix-name
+git clone https://github.com/SatvikPraveen/PCC-VizForge.git
+cd PCC-VizForge
+python -m venv .venv && source .venv/bin/activate
+make install-dev      # editable install with [dev] extras + pre-commit hooks
+make check            # ruff, mypy and the full test suite
 ```
 
-Use descriptive branch names that indicate the type of change.
+## Workflow
 
-### 2. Making Changes
+1. Branch from `main` (`feat/...`, `fix/...`, `docs/...`).
+2. Make focused commits using [Conventional Commits](https://www.conventionalcommits.org/)
+   (`feat(quakes): ...`, `fix(analysis): ...`, `test: ...`, `docs: ...`).
+3. Run `make check` locally; CI runs the same checks on Python 3.10–3.13
+   across Linux, macOS and Windows, plus an end-to-end reproducibility job.
+4. Open a pull request that explains **what** changed and **why**, and call
+   out any change to generated data, which breaks bit-for-bit reproducibility
+   of existing runs.
 
-- Follow the existing code style (see Code Standards below)
-- Add type hints to all functions and methods
-- Write docstrings for all public functions
-- Add logging statements for important operations
-- Add appropriate error handling
+## Standards
 
-### 3. Testing Your Changes
+| Area | Rule |
+|---|---|
+| Formatting / lint | `ruff format` and `ruff check` (config in `pyproject.toml`) |
+| Types | complete annotations; `mypy` must pass |
+| Docstrings | Google style, with references for any published method |
+| Errors | raise subclasses of `PccVizForgeError` (`pcc_vizforge.exceptions`) and chain causes (`raise ... from exc`) |
+| Logging | `logging.getLogger(__name__)`; the library never configures handlers |
+| Coverage | CI fails below 85 % (line + branch) |
 
-Before committing, run the full test suite:
+### Research-code rules
+
+These rules protect the package's core guarantees:
+
+- **Never use global randomness.** All randomness must come from the
+  `numpy.random.Generator` passed to `_simulate`, or from
+  `pcc_vizforge.rng.make_rng(seed)`. `np.random.seed`, `np.random.rand` and
+  friends are banned (ruff rule `NPY002`).
+- **Never read the wall clock** in a generator. Use a configured
+  `start_date` / `reference_date` instead.
+- **Validate parameters** in a frozen `GeneratorParams` dataclass. Unknown
+  config keys must fail loudly.
+- **Test against theory, not just shapes.** Every new model needs at least
+  one statistical test comparing simulated output with a closed form or a
+  known property (a KS test, moments, z-scores against a formula, etc.).
+  Mark Monte Carlo tests that take more than about a second with
+  `@pytest.mark.slow`, and use `pytest.mark.statistical` where appropriate.
+- **Report honest uncertainty.** Any estimator that returns a confidence
+  interval must have its coverage checked, either in a slow test or in a
+  study in `experiments/validation.py`, with results added to
+  `docs/validation.md`.
+- **Cite methods** in the module docstring and add the BibTeX entry to
+  `docs/references.bib`.
+
+## Adding a new generator
+
+1. Create `src/pcc_vizforge/generators/<name>.py` with a `GeneratorParams`
+   subclass (typed fields plus `validate()`) and a `BaseGenerator` subclass
+   that implements `_simulate(params, rng) -> pd.DataFrame`.
+2. Add `src/pcc_vizforge/configs/<name>.yaml` with `data_generation`,
+   `visualization` and `export` sections.
+3. Export it from `generators/__init__.py`, and register it in
+   `experiments/runner.py` (`DOMAINS`, `ANALYZERS`, `_figures`) and in
+   `cli.py` (`DOMAIN_NAMES`, `DASHBOARD_CLASSES`).
+4. Add estimators to `analysis/`, figures to `plots/diagnostics.py`, and
+   tests in `tests/test_<name>.py`.
+5. Document the model in `docs/methods.md`.
+
+## Adding an estimator or test
+
+Put it in the relevant `analysis/` module. Return a `TestResult`,
+`ConfidenceInterval` or a frozen dataclass with `to_dict()`. Validate it
+against known values (hand computation, SciPy, or brute force) and by
+simulation.
+
+## Running tests
 
 ```bash
-make all-checks  # Format, lint, type-check, and test
+pytest                          # everything (about 20 s)
+pytest -m "not slow"            # quick loop
+pytest tests/test_quakes.py -k b_value
+make coverage                   # HTML report in htmlcov/
 ```
 
-Or run individual checks:
+## Reporting issues
 
-```bash
-make test           # Run tests
-make test-coverage  # Run tests with coverage report
-make lint          # Run flake8
-make type-check    # Run mypy
-make format        # Auto-format code
-```
-
-### 4. Committing Changes
-
-```bash
-git add .
-git commit -m "Brief description of changes"
-```
-
-Use clear, concise commit messages. The pre-commit hooks will automatically:
-- Format code with black/isort
-- Run flake8 linting
-- Remove trailing whitespace
-- Check for merge conflicts
-
-### 5. Pushing and Creating a Pull Request
-
-```bash
-git push origin feature/your-feature-name
-```
-
-Then create a Pull Request on GitHub with:
-- Clear title describing the change
-- Description of what was changed and why
-- Reference to related issues (if any)
-- Any breaking changes clearly noted
-
-## Code Standards
-
-### Style Guide
-
-- **Formatting:** Code is formatted with `black` (88-character line length)
-- **Import Sorting:** Imports are sorted with `isort` (black profile)
-- **Linting:** Code is checked with `flake8`
-- **Type Checking:** Type hints are checked with `mypy`
-
-### Type Hints
-
-All functions and methods should have complete type hints:
-
-```python
-def validate_positive_int(
-    value: Any, param_name: str, min_val: int = 1
-) -> int:
-    """Validate that a value is a positive integer."""
-    # implementation
-```
-
-### Docstrings
-
-Use Google-style docstrings for all public functions and classes:
-
-```python
-def generate(self, save_to_file: bool = True) -> pd.DataFrame:
-    """Generate random walk data.
-
-    Args:
-        save_to_file: Whether to save generated data to file
-
-    Returns:
-        DataFrame with random walk data
-
-    Raises:
-        DataGenerationError: If data generation fails
-    """
-    # implementation
-```
-
-### Error Handling
-
-Use custom exceptions from `src/exceptions.py`:
-
-```python
-from src.exceptions import InvalidParameterError, DataGenerationError
-
-if not valid:
-    raise InvalidParameterError(f"Invalid parameter: {value}")
-```
-
-### Logging
-
-Use the logging module for all logging:
-
-```python
-import logging
-
-logger = logging.getLogger(__name__)
-
-logger.debug("Debug message")
-logger.info("Info message")
-logger.warning("Warning message")
-logger.error("Error message", exc_info=True)
-```
-
-## Adding New Features
-
-### Adding a New Generator
-
-1. Create a new file in `src/generators/`
-2. Implement the generator class with proper type hints and error handling
-3. Add tests in `tests/test_generators_comprehensive.py`
-4. Add configuration file in `config/`
-5. Update `src/generators/__init__.py` to export the generator
-
-Example:
-
-```python
-# src/generators/new_generator.py
-from src.exceptions import DataGenerationError
-
-class NewGenerator:
-    def __init__(self, config_name: str = "new_data") -> None:
-        """Initialize generator with configuration."""
-        self.config = load_config(config_name)
-        self._validate_config()
-    
-    def generate(self, save_to_file: bool = True) -> pd.DataFrame:
-        """Generate data."""
-        # implementation
-```
-
-### Adding a New Plot Type
-
-1. Create matplotlib implementation: `src/plots/new_data_mpl.py`
-2. Create plotly implementation: `src/plots/new_data_plotly.py`
-3. Add tests in `tests/test_plots.py`
-4. Update `src/plots/__init__.py` to export the plot classes
-
-### Adding a New Configuration
-
-1. Create `config/new_config.yaml` with all required parameters
-2. Document the configuration in README.md
-3. Add configuration to CLI help text
-
-## Running Tests
-
-### Full Test Suite
-
-```bash
-make test          # Run all tests
-make test-verbose  # Run with verbose output
-make test-coverage # Run with coverage report
-```
-
-### Specific Tests
-
-```bash
-# Run specific test file
-pytest tests/test_generators_comprehensive.py
-
-# Run specific test class
-pytest tests/test_generators_comprehensive.py::TestRandomWalkGenerator
-
-# Run specific test
-pytest tests/test_generators_comprehensive.py::TestRandomWalkGenerator::test_generate_basic
-
-# Run tests matching a pattern
-pytest -k "random_walk"
-
-# Run tests with markers
-pytest -m "unit"  # unit tests only
-pytest -m "integration"  # integration tests only
-```
-
-## Documentation
-
-- Keep README.md updated with new features
-- Add docstrings to all public APIs
-- Update doc/CHANGELOG.md for significant changes
-- Add examples for new features in notebooks/
-
-## Reporting Issues
-
-When reporting bugs, please include:
-
-- Python version (`python --version`)
-- OS and OS version
-- PCC-VizForge version
-- Minimal reproducible example
-- Expected vs actual behavior
-- Any error messages/stack traces
-
-## Git Workflow
-
-### Before Pushing
-
-1. Update local main: `git pull origin main`
-2. Rebase your branch: `git rebase main`
-3. Run full test suite: `make all-checks`
-4. Push changes: `git push origin feature-name`
-
-### After Creating PR
-
-- Wait for CI checks to pass
-- Respond to review comments promptly
-- Make requested changes in new commits (don't force push)
-- Re-request review after making changes
-
-## Release Process
-
-1. Update version in `pyproject.toml` and `src/__init__.py`
-2. Update doc/CHANGELOG.md
-3. Create a release commit
-4. Tag release: `git tag v0.2.0`
-5. Push to GitHub: `git push && git push --tags`
-6. GitHub Actions will automatically publish to PyPI
-
-## Questions?
-
-- Check existing documentation in README.md
-- Look at existing code examples
-- Open an issue with the "question" label
-- Check project discussions
-
-Thank you for contributing to PCC-VizForge! 🎉
+Please include the Python version, OS, PCC-VizForge version, a minimal
+reproducible example (ideally a `pcc-vizforge run ...` command with its
+seed, or the run's `manifest.json`), and the expected vs. actual behaviour.

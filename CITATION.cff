@@ -1,0 +1,32 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it using the metadata below."
+title: "PCC-VizForge: reproducible simulation, statistical inference and visualisation for canonical stochastic processes"
+type: software
+authors:
+  - family-names: Praveen
+    given-names: Satvik
+    email: satvikpraveen707@gmail.com
+repository-code: "https://github.com/SatvikPraveen/PCC-VizForge"
+license: MIT
+version: 0.2.0.dev0
+date-released: "2026-09-27"
+keywords:
+  - stochastic processes
+  - synthetic data
+  - anomalous diffusion
+  - fractional Brownian motion
+  - Gutenberg-Richter law
+  - ETAS
+  - power-law distributions
+  - weather generator
+  - reproducibility
+  - visualization
+abstract: >-
+  PCC-VizForge generates synthetic data from five canonical stochastic
+  models (random walks and fractional Brownian motion, dice, ETAS-style
+  earthquake catalogues, WGEN-type daily weather, and heavy-tailed
+  repository popularity), estimates their parameters with standard
+  field-specific estimators, and records every run with a provenance
+  manifest so it can be regenerated bit-for-bit. Monte Carlo validation
+  studies report the bias, RMSE and confidence-interval coverage of each
+  estimator against known ground truth.

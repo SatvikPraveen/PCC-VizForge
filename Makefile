@@ -5,7 +5,7 @@ SEED ?= 12345
 DOMAINS := random_walk dice weather quakes github
 
 .DEFAULT_GOAL := help
-.PHONY: help install install-dev lint format typecheck test test-fast coverage check \
+.PHONY: help install install-dev lint format typecheck test test-fast coverage check figures \
 	runs verify validate notebooks build clean clean-outputs pre-commit
 
 help: ## Show this help
@@ -48,6 +48,9 @@ verify: ## Verify every run in runs/ reproduces bit-for-bit
 
 validate: ## Monte Carlo validation of all estimators
 	pcc-vizforge validate all --replicates 500 --out validation
+
+figures: ## Regenerate the docs/README figure gallery (fixed seeds)
+	$(PYTHON) scripts/make_figures.py --out docs/figures
 
 notebooks: ## Execute all notebooks in place
 	jupyter nbconvert --to notebook --execute --inplace notebooks/*.ipynb
