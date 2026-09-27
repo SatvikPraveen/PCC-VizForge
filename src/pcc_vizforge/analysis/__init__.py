@@ -12,11 +12,14 @@ probability
 seismology
     Gutenberg-Richter b-value MLEs, magnitude of completeness, Omori-Utsu
     fitting, inter-event statistics.
+timeseries
+    Harmonic regression, Mann-Kendall / Sen trend tests, wet-dry Markov
+    chains, humidity and heat-index thermodynamics.
 """
 
 from __future__ import annotations
 
-from pcc_vizforge.analysis import diffusion, probability, seismology
+from pcc_vizforge.analysis import diffusion, probability, seismology, timeseries
 from pcc_vizforge.analysis.inference import (
     ConfidenceInterval,
     TestResult,
@@ -40,4 +43,5 @@ __all__ = [
     "probability",
     "runs_test",
     "seismology",
+    "timeseries",
 ]

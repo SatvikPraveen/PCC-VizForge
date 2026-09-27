@@ -1,13 +1,36 @@
 # Weather Data Configuration
 data_generation:
   n_days: 365
-  base_temperature: 20 # Celsius
-  temperature_variation: 15
-  seasonal_amplitude: 10
-  humidity_base: 60 # Percentage
-  humidity_variation: 25
-  precipitation_probability: 0.3
+  start_date: "2023-01-01"
+  hemisphere: north # north | south (flips seasons)
   random_seed: 42
+
+  # Temperature (deg C): annual harmonic + AR(1) anomaly + optional trend
+  base_temperature: 15.0
+  seasonal_amplitude: 10.0
+  seasonal_phase_days: 110.0 # day of year where the seasonal term crosses zero upward
+  temperature_variation: 3.0 # std of daily anomaly
+  temperature_persistence: 0.7 # lag-1 autocorrelation of anomaly
+  warming_trend_c_per_decade: 0.0
+  wet_day_temperature_offset: -1.0
+  diurnal_range_dry: 11.0
+  diurnal_range_wet: 6.0
+
+  # Precipitation: two-state Markov chain occurrence + Gamma amounts
+  p_wet_given_dry: 0.2
+  p_wet_given_wet: 0.6
+  precipitation_shape: 0.75
+  precipitation_mean_mm: 6.0
+
+  # Moisture, wind (km/h, Weibull) and pressure (hPa, AR(1))
+  dewpoint_depression_dry: 3.0
+  dewpoint_depression_wet: 0.5
+  wind_weibull_shape: 2.0
+  wind_mean_dry: 12.0
+  wind_mean_wet: 20.0
+  pressure_std: 8.0
+  pressure_persistence: 0.8
+  wet_day_pressure_offset: -6.0
 
 visualization:
   matplotlib:
