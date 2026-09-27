@@ -302,7 +302,7 @@ def run_experiment(
 
     df = gen.generate(seed=used_seed)
     data_path = run_dir / "data.csv"
-    df.to_csv(data_path, index=False)
+    df.to_csv(data_path, index=False, lineterminator="\n")
 
     metrics = analyze(domain, gen, df, used_seed)
     metrics_path = run_dir / "metrics.json"
@@ -348,7 +348,7 @@ def verify_run(run_dir: str | Path) -> dict[str, Any]:
     df = gen.generate(seed=manifest.seed)
     tmp = run_dir / ".verify.csv"
     try:
-        df.to_csv(tmp, index=False)
+        df.to_csv(tmp, index=False, lineterminator="\n")
         regenerated = file_sha256(tmp)
     finally:
         tmp.unlink(missing_ok=True)

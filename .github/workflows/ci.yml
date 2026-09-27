@@ -1,0 +1,116 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  schedule:
+    - cron: "0 6 * * 1" # weekly: catch breakage from new dependency releases
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  MPLBACKEND: Agg
+  PYTHONHASHSEED: "0"
+
+jobs:
+  lint:
+    name: Lint & type-check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: python -m pip install --upgrade pip
+      - run: pip install -e ".[dev]"
+      - name: Ruff (lint)
+        run: ruff check src tests
+      - name: Ruff (format)
+        run: ruff format --check src tests
+      - name: mypy
+        run: mypy
+
+  test:
+    name: Tests (py${{ matrix.python-version }}, ${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest]
+        python-version: ["3.10", "3.11", "3.12", "3.13"]
+        include:
+          - os: macos-latest
+            python-version: "3.12"
+          - os: windows-latest
+            python-version: "3.12"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+      - run: python -m pip install --upgrade pip
+      - run: pip install -e ".[test]"
+      - name: Run test suite (including statistical Monte Carlo tests)
+        run: pytest --cov=pcc_vizforge --cov-report=xml --cov-report=term --cov-fail-under=85
+      - uses: actions/upload-artifact@v4
+        if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.12'
+        with:
+          name: coverage-xml
+          path: coverage.xml
+
+  reproducibility:
+    name: End-to-end reproducibility
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -e .
+      - name: Run and verify every domain
+        run: |
+          set -euo pipefail
+          for d in random_walk dice weather quakes github; do
+            pcc-vizforge run "$d" --seed 12345 --out runs --name "$d" --format png --format pdf
+            pcc-vizforge verify "runs/$d"
+          done
+      - name: Validation studies (short)
+        run: pcc-vizforge validate all --replicates 50 --out validation
+      - uses: actions/upload-artifact@v4
+        with:
+          name: runs-and-validation
+          path: |
+            runs/
+            validation/
+
+  build:
+    name: Build distribution
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install build twine
+      - run: python -m build
+      - run: twine check --strict dist/*
+      - name: Smoke-test the wheel outside the source tree
+        run: |
+          python -m venv /tmp/wheel-env
+          /tmp/wheel-env/bin/pip install dist/*.whl
+          cd /tmp && /tmp/wheel-env/bin/pcc-vizforge run dice --seed 1 --out /tmp/r --name d --no-figures
+          /tmp/wheel-env/bin/pcc-vizforge verify /tmp/r/d
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/

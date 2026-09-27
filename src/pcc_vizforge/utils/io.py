@@ -124,7 +124,7 @@ def save_data(data: Any, file_path: str | Path, format_type: str = "auto") -> No
         if format_type == "csv":
             if not isinstance(data, pd.DataFrame):
                 raise ValidationError("CSV format requires pandas DataFrame")
-            data.to_csv(file_path, index=False)
+            data.to_csv(file_path, index=False, lineterminator="\n")
             logger.info(f"Saved data to CSV: {file_path}")
 
         elif format_type == "json":

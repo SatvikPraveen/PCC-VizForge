@@ -161,3 +161,6 @@ api_keys.yaml
 /logs/
 /runs/
 /outputs/
+/validation/
+coverage.xml
+.ruff_cache/
