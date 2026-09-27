@@ -197,17 +197,12 @@ def _figures(
         figs["gutenberg_richter"] = D.gutenberg_richter_figure(
             df["magnitude"], est, bin_width=max(p.magnitude_bin, 0.1)
         )
-        after = df[df["is_aftershock"]]
-        if len(after) >= 30:
-            parent_t = (
-                df.set_index("earthquake_id")
-                .loc[after["parent_id"], "time_days"]
-                .to_numpy()
-            )
-            delays = after["time_days"].to_numpy() - parent_t
+        delays, windows = gen.aftershock_delays(df)
+        if delays.size >= 30:
             try:
+                omori = seismology.fit_omori(delays, windows)
                 figs["aftershock_decay"] = D.omori_figure(
-                    delays, seismology.fit_omori(delays)
+                    delays, omori, windows=windows
                 )
             except PccVizForgeError:
                 logger.info("Skipping Omori figure: fit failed")

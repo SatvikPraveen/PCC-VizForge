@@ -162,8 +162,16 @@ $M_0 = 10^{1.5M + 9.1}$ N·m [@hanks1979moment].
 | SE($\hat b$) | $2.30\,\hat b^2\sqrt{\sum(M_i-\bar M)^2/n(n-1)}$ | @shi1982standard |
 | $b$ (truncated) | root of the score equation $1/\beta - \bar x - L e^{-\beta L}/(1-e^{-\beta L}) = 0$ | @page1968aftershocks |
 | $M_c$ | maximum curvature + 0.2 | @wiemer2000minimum; @woessner2005assessing |
-| $(c,p)$ | MLE of Omori-Utsu on $[0,T]$ (profile likelihood, Nelder-Mead) | @ogata1983estimation |
+| $(c,p)$ | conditional MLE of Omori-Utsu with a per-event window $T_i$ (catalogue end − parent time) | @ogata1983estimation |
 | clustering | CV of inter-event times (1 for Poisson) | — |
+
+**Censoring of pooled aftershock delays.** Delays pooled from many parents
+are each observable only until the catalogue ends. Fitting them with one
+common window under-represents long delays and biases $p$ upward: in one
+catalogue the naive fit gave $\hat p = 1.143 \pm 0.015$ for a true
+$p = 1.1$. `fit_omori` therefore accepts per-event windows and normalises
+each delay's density over its own window, and
+`EarthquakeGenerator.aftershock_delays` returns those windows.
 
 The Aki estimator is biased upward by the factor $n/(n-1)$.
 `unbiased=True` removes this bias. The validation study finds exactly the

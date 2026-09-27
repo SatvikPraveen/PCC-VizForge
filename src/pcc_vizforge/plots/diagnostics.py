@@ -23,6 +23,7 @@ from pcc_vizforge.analysis.seismology import (
     BValueEstimate,
     OmoriFit,
     frequency_magnitude_distribution,
+    omori_expected_density,
 )
 from pcc_vizforge.analysis.timeseries import HarmonicFit
 from pcc_vizforge.plots.style import TOKENS, publication_style, series_color
@@ -205,9 +206,14 @@ def omori_figure(
     *,
     n_bins: int = 30,
     time_unit: str = "days",
+    windows: ArrayLike | None = None,
     ax: Axes | None = None,
 ) -> Figure:
-    """Aftershock rate in log-spaced bins with the fitted Omori-Utsu law."""
+    """Aftershock rate in log-spaced bins with the fitted Omori-Utsu law.
+
+    Pass the per-event observation ``windows`` used in the fit so the overlay
+    includes the censoring of long delays.
+    """
     with publication_style():
         fig, ax = _axes(ax)
         t = np.asarray(times, dtype=float)
@@ -237,7 +243,7 @@ def omori_figure(
             xs = np.geomspace(t.min(), t.max(), 100)
             ax.plot(
                 xs,
-                fit.rate(xs),
+                omori_expected_density(xs, fit, windows),
                 color=series_color(1),
                 label=f"Omori-Utsu: p = {fit.p:.2f} ± {fit.p_stderr:.2f}, c = {fit.c:.3g}",
             )

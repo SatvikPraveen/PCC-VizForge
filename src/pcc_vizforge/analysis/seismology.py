@@ -42,6 +42,7 @@ __all__ = [
     "haversine_km",
     "interevent_cv",
     "magnitude_of_completeness",
+    "omori_expected_density",
     "omori_sample_delays",
     "seismic_energy_joules",
     "seismic_moment_nm",
@@ -286,30 +287,73 @@ class OmoriFit:
         return asdict(self)
 
 
-def _omori_integral(c: float, p: float, T: float) -> float:
+def _omori_integral(c: float, p: float, T: float | NDArray[np.float64]) -> Any:
+    """∫_0^T (t + c)^(-p) dt (vectorised over ``T``)."""
+    T_arr = np.asarray(T, dtype=float)
     if abs(p - 1.0) < 1e-10:
-        return float(np.log((T + c) / c))
-    return float(((T + c) ** (1 - p) - c ** (1 - p)) / (1 - p))
+        out = np.log((T_arr + c) / c)
+    else:
+        out = ((T_arr + c) ** (1 - p) - c ** (1 - p)) / (1 - p)
+    return float(out) if out.ndim == 0 else out
 
 
-def fit_omori(times: ArrayLike, t_max: float | None = None) -> OmoriFit:
-    """Maximum-likelihood fit of the Omori-Utsu law to aftershock times.
+def omori_expected_density(
+    t: ArrayLike, fit: OmoriFit, windows: ArrayLike | None = None
+) -> NDArray[np.float64]:
+    """Expected density of observed delays under a fitted Omori-Utsu law.
+
+    With per-event observation ``windows`` T_i (see :func:`fit_omori`) this is
+    Σ_i (t + c)^(-p) 1[t < T_i] / ∫_0^{T_i}(u + c)^(-p) du, which accounts for
+    the censoring of long delays near the end of a catalogue.
+    """
+    tt = np.asarray(t, dtype=float)
+    base = np.power(tt + fit.c, -fit.p)
+    if windows is None:
+        return fit.K * base
+    w = np.sort(np.asarray(windows, dtype=float))
+    inv_norm = 1.0 / _omori_integral(fit.c, fit.p, w)
+    # suffix sums: Σ_{i: T_i > t} 1/I_i
+    suffix = np.concatenate([np.cumsum(inv_norm[::-1])[::-1], [0.0]])
+    return base * suffix[np.searchsorted(w, tt, side="right")]
+
+
+def fit_omori(times: ArrayLike, t_max: float | ArrayLike | None = None) -> OmoriFit:
+    """Maximum-likelihood fit of the Omori-Utsu law to aftershock delays.
 
     Args:
-        times: Times since the mainshock (> 0), any unit.
-        t_max: End of the observation window (defaults to ``max(times)``).
+        times: Delays since the triggering event (> 0), any unit.
+        t_max: Observation window. Either a scalar common to all events
+            (default ``max(times)``) or an array with one window per delay,
+            e.g. ``catalogue_end - parent_time`` when delays from many
+            parents are pooled. Ignoring per-event windows censors long
+            delays unevenly and biases ``p`` upward.
+
+    The conditional likelihood normalises each delay's density
+    ∝ (t + c)^(-p) over its own window. ``K`` is reported for the largest
+    window; use :func:`omori_expected_density` to overlay pooled data.
     """
-    t = np.sort(np.asarray(times, dtype=float))
-    t = t[t > 0]
+    t_all = np.asarray(times, dtype=float).ravel()
+    if t_max is None:
+        windows = np.full(t_all.shape, float(t_all.max()) if t_all.size else 0.0)
+    else:
+        windows = np.broadcast_to(np.asarray(t_max, dtype=float), t_all.shape).astype(
+            float
+        )
+    keep = t_all > 0
+    t, windows = t_all[keep], windows[keep]
     n = t.size
     if n < 10:
         raise InvalidParameterError("need at least 10 aftershocks to fit Omori's law")
-    T = float(t_max) if t_max is not None else float(t[-1])
+    if np.any(windows < t):
+        raise InvalidParameterError("each observation window must be >= its delay")
+    T = float(windows.max())
 
     def nll(theta: NDArray[np.float64]) -> float:
         c, p = np.exp(theta[0]), np.exp(theta[1])
-        # Conditional log-likelihood of times given n (K profiles out).
-        return float(p * np.sum(np.log(t + c)) + n * np.log(_omori_integral(c, p, T)))
+        # Conditional log-likelihood of the delays given n (K profiles out).
+        return float(
+            p * np.sum(np.log(t + c)) + np.sum(np.log(_omori_integral(c, p, windows)))
+        )
 
     x0 = np.log([max(1e-3, 0.01 * T), 1.1])
     res = optimize.minimize(
@@ -337,10 +381,7 @@ def fit_omori(times: ArrayLike, t_max: float | None = None) -> OmoriFit:
         p_se = float(p * np.sqrt(max(cov[1, 1], 0.0)))
     except np.linalg.LinAlgError:  # pragma: no cover
         p_se = float("nan")
-    ll = (
-        -res.fun + n * np.log(K) - n * np.log(n) + n
-    )  # full (Poisson) log-likelihood up to const
-    return OmoriFit(float(K), c, p, p_se, int(n), T, float(ll))
+    return OmoriFit(float(K), c, p, p_se, int(n), T, float(-res.fun))
 
 
 def interevent_cv(times: ArrayLike) -> float:

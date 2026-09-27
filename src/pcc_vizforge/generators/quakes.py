@@ -45,6 +45,7 @@ from pcc_vizforge.analysis.seismology import (
     EARTH_RADIUS_KM,
     b_value_mle,
     b_value_mle_truncated,
+    fit_omori,
     interevent_cv,
     magnitude_of_completeness,
     omori_sample_delays,
@@ -397,6 +398,25 @@ class EarthquakeGenerator(BaseGenerator[EarthquakeParams]):
     # ------------------------------------------------------------------ #
     # Analysis
     # ------------------------------------------------------------------ #
+    def aftershock_delays(self, data: pd.DataFrame) -> tuple[np.ndarray, np.ndarray]:
+        """Parent-to-aftershock delays and their observation windows (days).
+
+        Each aftershock is only observable until the catalogue ends, so its
+        window is ``duration_days - parent_time``; pass both arrays to
+        :func:`~pcc_vizforge.analysis.seismology.fit_omori`.
+        """
+        if "is_aftershock" not in data or not data["is_aftershock"].any():
+            return np.array([]), np.array([])
+        after = data[data["is_aftershock"]]
+        parent_t = (
+            data.set_index("earthquake_id")
+            .loc[after["parent_id"], "time_days"]
+            .to_numpy()
+        )
+        delays = after["time_days"].to_numpy() - parent_t
+        windows = self.params.duration_days - parent_t
+        return delays, windows
+
     def calculate_statistics(self, data: pd.DataFrame) -> dict[str, Any]:
         """Descriptive statistics plus b-value, Mc and clustering diagnostics."""
         p = self.params
@@ -435,4 +455,8 @@ class EarthquakeGenerator(BaseGenerator[EarthquakeParams]):
             ).to_dict()
         if "time_days" in data and len(data) >= 3:
             stats["interevent_cv"] = interevent_cv(data["time_days"])
+        delays, windows = self.aftershock_delays(data)
+        if delays.size >= 30:
+            stats["omori"] = fit_omori(delays, windows).to_dict()
+            stats["true_omori_p"] = self.params.aftershock_cfg["omori_p"]
         return stats

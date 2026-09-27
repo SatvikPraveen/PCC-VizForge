@@ -137,6 +137,36 @@ class TestEstimators:
         assert fit.p == pytest.approx(1.15, abs=4 * fit.p_stderr + 0.02)
         assert fit.rate(np.array([0.0]))[0] > fit.rate(np.array([10.0]))[0]
 
+    def test_omori_per_event_windows_remove_censoring_bias(self):
+        """Pooled sequences observed for different lengths: ignoring the
+        per-parent windows biases p upward; using them recovers it."""
+        from pcc_vizforge.analysis.seismology import omori_expected_density
+
+        rng = make_rng(11)
+        T_end, p_true, c_true = 365.0, 1.1, 0.01
+        parents = rng.uniform(0, T_end, 4000)
+        n_children = rng.poisson(3, parents.size)
+        par = np.repeat(parents, n_children)
+        d = omori_sample_delays(rng, par.size, c_true, p_true, T_end)
+        keep = par + d < T_end
+        delays, windows = d[keep], (T_end - par)[keep]
+        naive = fit_omori(delays)
+        proper = fit_omori(delays, windows)
+        assert abs(proper.p - p_true) < 3 * proper.p_stderr + 0.01
+        assert naive.p - p_true > 3 * naive.p_stderr
+        dens = omori_expected_density(np.array([0.1, 1.0]), proper, windows)
+        assert dens[0] > dens[1] > 0
+
+    def test_generator_reports_unbiased_omori(self):
+        g = EarthquakeGenerator(n_earthquakes=8000, aftershocks={"productivity": 0.06})
+        s = g.calculate_statistics(g.generate(seed=4))
+        o = s["omori"]
+        assert abs(o["p"] - s["true_omori_p"]) < 3.5 * o["p_stderr"] + 0.01
+
+    def test_omori_window_validation(self):
+        with pytest.raises(InvalidParameterError):
+            fit_omori(np.arange(1.0, 20.0), t_max=np.full(19, 5.0))
+
     def test_interevent_cv_poisson(self):
         t = np.sort(make_rng(2).uniform(0, 1000, 5000))
         assert interevent_cv(t) == pytest.approx(1.0, abs=0.05)
