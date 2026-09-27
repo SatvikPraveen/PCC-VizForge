@@ -54,6 +54,24 @@ class TestFitting:
         fit = fit_power_law(x, xmin=1)
         assert fit.discrete and abs(fit.alpha - 2.3) < 4 * fit.alpha_stderr
 
+    def test_discrete_stderr_uses_fisher_information(self):
+        x = sample_power_law(make_rng(12), 1000, 3.0, 1, discrete=True)
+        fit = fit_power_law(x, xmin=1)
+        # the continuous formula (alpha-1)/sqrt(n) understates discrete uncertainty
+        assert fit.alpha_stderr > 1.1 * (fit.alpha - 1) / np.sqrt(fit.n_tail)
+
+    @pytest.mark.slow
+    def test_discrete_ci_coverage(self):
+        from pcc_vizforge.rng import spawn_rngs
+
+        hits = 0
+        for rng in spawn_rngs(21, 200):
+            fit = fit_power_law(
+                sample_power_law(rng, 800, 3.0, 1, discrete=True), xmin=1
+            )
+            hits += abs(fit.alpha - 3.0) <= 1.96 * fit.alpha_stderr
+        assert hits / 200 >= 0.91
+
     def test_xmin_detection_with_body(self):
         rng = make_rng(4)
         body = rng.uniform(0.1, 5.0, 3000)

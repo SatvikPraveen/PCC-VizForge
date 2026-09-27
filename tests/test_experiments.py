@@ -211,5 +211,10 @@ def test_plotly_template_available_in_fresh_process():
         "WeatherPlotlyPlot().plot(WeatherGenerator(n_days=30).generate())\n"
     )
     src = Path(__file__).resolve().parents[1] / "src"
-    env = {**os.environ, "PYTHONPATH": os.pathsep.join([str(src), os.environ.get("PYTHONPATH", "")])}
-    subprocess.run([sys.executable, "-c", code], check=True, capture_output=True, env=env)
+    env = {
+        **os.environ,
+        "PYTHONPATH": os.pathsep.join([str(src), os.environ.get("PYTHONPATH", "")]),
+    }
+    subprocess.run(
+        [sys.executable, "-c", code], check=True, capture_output=True, env=env
+    )

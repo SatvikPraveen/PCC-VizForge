@@ -112,6 +112,21 @@ def _alpha_discrete(tail: NDArray[np.float64], xmin: float) -> float:
     return float(res.x)
 
 
+def _discrete_stderr(alpha: float, xmin: float, n: int) -> float:
+    """Standard error of the discrete MLE from the Fisher information.
+
+    For p(x) = x^(-α) / ζ(α, x_min) the per-observation information is
+    d²/dα² log ζ(α, x_min); the continuous formula (α - 1)/√n understates
+    the uncertainty for small x_min and large α.
+    """
+    h = 1e-4 * max(alpha, 1.0)
+    lz = [np.log(special.zeta(a, xmin)) for a in (alpha - h, alpha, alpha + h)]
+    info = (lz[0] - 2 * lz[1] + lz[2]) / h**2
+    if not np.isfinite(info) or info <= 0:  # pragma: no cover - numerical guard
+        return float((alpha - 1.0) / np.sqrt(n))
+    return float(1.0 / np.sqrt(n * info))
+
+
 def _ks_distance(
     tail: NDArray[np.float64], alpha: float, xmin: float, discrete: bool
 ) -> float:
@@ -133,7 +148,11 @@ def _fit_fixed(data: NDArray[np.float64], xmin: float, discrete: bool) -> PowerL
     if tail.size < 2 or np.all(tail == xmin):
         raise InvalidParameterError("not enough distinct observations above xmin")
     alpha = _alpha_discrete(tail, xmin) if discrete else _alpha_continuous(tail, xmin)
-    se = (alpha - 1.0) / np.sqrt(tail.size)
+    se = (
+        _discrete_stderr(alpha, xmin, tail.size)
+        if discrete
+        else (alpha - 1.0) / np.sqrt(tail.size)
+    )
     return PowerLawFit(
         alpha=float(alpha),
         alpha_stderr=float(se),
