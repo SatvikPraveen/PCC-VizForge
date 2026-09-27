@@ -30,7 +30,10 @@ The mathematics for every row is in [`docs/methods.md`](docs/methods.md).
   <img src="docs/figures/gutenberg_richter.png" width="48%" alt="Gutenberg-Richter frequency-magnitude distribution with fitted b-value">
   <img src="docs/figures/stars_ccdf.png" width="48%" alt="Complementary CDF of star counts with power-law tail fit">
   <img src="docs/figures/dice.png" width="48%" alt="Dice-sum frequencies with Wilson intervals against the exact PMF">
+  <img src="docs/figures/temperature.png" width="96%" alt="Daily temperatures with fitted seasonal cycle and HAC trend">
 </p>
+
+<p align="center"><sub>Every figure is regenerated from fixed seeds by <code>make figures</code>.</sub></p>
 
 ## Installation
 
@@ -63,11 +66,12 @@ pcc-vizforge dashboard weather --library plotly --export-type html
 
 Every command accepts `--set key.path=value` overrides (values are parsed as
 YAML) and `--config my.yaml`. Run `pcc-vizforge --help` for the full list.
+Outputs go to the current directory: runs to `./runs/` (or `--out`), and
+dashboards to `./exports/`. Set `PCC_VIZFORGE_OUTPUT_DIR` to change the root.
 
 ### Python
 
 ```python
-import numpy as np
 from pcc_vizforge.generators import RandomWalkGenerator
 from pcc_vizforge.generators.random_walk import frame_to_positions
 from pcc_vizforge.analysis.diffusion import bootstrap_msd_exponent
@@ -134,12 +138,17 @@ From [`docs/validation.md`](docs/validation.md), 500 replicates per setting:
 | χ² dice-sum test under H₀ | size 0.042–0.062 at α = 0.05 |
 | Trend SE with AR(1) noise, φ = 0.7 | OLS coverage 0.556 → Newey–West 0.904 |
 
-Validation found, and fixed, several estimators that under-covered:
+Validation found, and fixed, several estimators that were biased or
+under-covered:
 - regression CIs for MSD exponents;
 - continuous-formula SEs for discrete power laws;
-- OLS trend SEs under autocorrelation.
+- OLS trend SEs under autocorrelation;
+- Omori fits that ignored per-parent censoring;
+- the small-sample bias of the Aki b-value, which now has an optional
+  correction.
 
-The limitations that remain are documented, not hidden.
+The limitations that remain are documented in
+[`docs/validation.md`](docs/validation.md), not hidden.
 
 ## Project layout
 
