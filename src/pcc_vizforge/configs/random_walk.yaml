@@ -2,9 +2,14 @@
 data_generation:
   n_steps: 1000
   n_walks: 5
-  step_size: 1.0
+  step_size: 1.0 # RMS single-step displacement, a
   random_seed: 42
-  dimensions: 1 # 1D or 2D random walks
+  dimensions: 1 # 1, 2 or 3
+  # One of: lattice | gaussian | correlated | levy | fbm
+  model: lattice
+  hurst: 0.5 # fbm only: Hurst exponent H in (0, 1); MSD ~ t^(2H)
+  levy_alpha: 1.5 # levy only: Pareto tail index in (0, 2]
+  persistence: 0.0 # correlated only: velocity autocorrelation rho in (-1, 1)
 
 visualization:
   matplotlib:
