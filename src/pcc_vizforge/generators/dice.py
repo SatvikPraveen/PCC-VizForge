@@ -1,11 +1,12 @@
 """Dice simulation data generator."""
 
-from typing import Dict, List, Optional, Tuple
+from collections import Counter
+from typing import Dict
+
 import numpy as np
 import pandas as pd
-from collections import Counter
 
-from pcc_vizforge.utils.io import load_config, save_data, get_data_directory
+from pcc_vizforge.utils.io import get_data_directory, load_config, save_data
 
 
 class DiceGenerator:

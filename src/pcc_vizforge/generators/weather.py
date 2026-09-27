@@ -1,11 +1,11 @@
 """Weather data generator."""
 
-from typing import Dict, List, Optional
-import numpy as np
-import pandas as pd
 from datetime import datetime, timedelta
 
-from pcc_vizforge.utils.io import load_config, save_data, get_data_directory
+import numpy as np
+import pandas as pd
+
+from pcc_vizforge.utils.io import get_data_directory, load_config, save_data
 
 
 class WeatherGenerator:

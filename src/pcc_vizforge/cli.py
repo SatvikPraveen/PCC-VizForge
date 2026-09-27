@@ -1,6 +1,5 @@
 """Command-line interface for PCC VizForge."""
 
-import logging
 from typing import Optional
 
 import click
@@ -411,7 +410,7 @@ def show_config(config_name: str) -> None:
         click.echo(f"\nConfiguration: {config_name}")
         click.echo("-" * 60)
         click.echo(yaml.dump(config, default_flow_style=False, indent=2))
-        logger.debug(f"Configuration displayed successfully")
+        logger.debug("Configuration displayed successfully")
     except Exception as e:
         click.echo(click.style(f"Error: {e}", fg="red"), err=True)
         logger.error(f"Failed to load configuration {config_name}: {e}")

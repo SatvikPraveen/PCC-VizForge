@@ -1,12 +1,17 @@
 """Matplotlib plotting for random walk data."""
 
-from typing import Optional, Tuple
-import matplotlib.pyplot as plt
-import pandas as pd
-import numpy as np
+from typing import Optional
 
-from pcc_vizforge.utils.io import load_config, get_export_directory
-from pcc_vizforge.utils.theming import setup_figure_style, format_axis_labels, add_watermark
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+
+from pcc_vizforge.utils.io import get_export_directory, load_config
+from pcc_vizforge.utils.theming import (
+    add_watermark,
+    format_axis_labels,
+    setup_figure_style,
+)
 
 
 class RandomWalkMatplotlibPlot:

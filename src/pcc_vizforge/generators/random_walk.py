@@ -1,7 +1,7 @@
 """Random Walk data generator."""
 
 import logging
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Union
 
 import numpy as np
 import pandas as pd
@@ -11,14 +11,14 @@ from pcc_vizforge.exceptions import (
     DataShapeError,
     InvalidParameterError,
 )
-from pcc_vizforge.utils.io import load_config, save_data, get_data_directory
+from pcc_vizforge.utils.io import get_data_directory, load_config, save_data
 from pcc_vizforge.utils.validation import (
-    validate_positive_int,
-    validate_positive_float,
-    validate_dimensions,
-    validate_data_size,
-    validate_seed,
     validate_config_structure,
+    validate_data_size,
+    validate_dimensions,
+    validate_positive_float,
+    validate_positive_int,
+    validate_seed,
 )
 
 logger = logging.getLogger(__name__)
@@ -45,7 +45,7 @@ class RandomWalkGenerator:
             validate_config_structure(self.config, self.REQUIRED_CONFIG_KEYS)
             self.data_config: Dict[str, Any] = self.config["data_generation"]
             self._validate_config()
-            logger.debug(f"RandomWalkGenerator initialized successfully")
+            logger.debug("RandomWalkGenerator initialized successfully")
         except Exception as e:
             logger.error(f"Failed to initialize RandomWalkGenerator: {e}")
             raise

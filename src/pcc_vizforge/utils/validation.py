@@ -3,12 +3,12 @@
 import logging
 from typing import Any, Dict, Optional
 
-from pcc_vizforge.exceptions import InvalidParameterError
 from pcc_vizforge.constants import (
-    MIN_DATA_POINTS,
     MAX_DATA_POINTS,
+    MIN_DATA_POINTS,
     VALID_DIMENSIONS,
 )
+from pcc_vizforge.exceptions import InvalidParameterError
 
 logger = logging.getLogger(__name__)
 

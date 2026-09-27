@@ -1,11 +1,12 @@
 """GitHub statistics data generator."""
 
-from typing import Dict, List, Optional
+from datetime import datetime, timedelta
+from typing import Dict
+
 import numpy as np
 import pandas as pd
-from datetime import datetime, timedelta
 
-from pcc_vizforge.utils.io import load_config, save_data, get_data_directory
+from pcc_vizforge.utils.io import get_data_directory, load_config, save_data
 
 
 class GitHubGenerator:

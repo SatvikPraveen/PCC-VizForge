@@ -1,11 +1,12 @@
 """Plotly plotting for weather data."""
 
 from typing import Optional
+
+import pandas as pd
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
-import pandas as pd
 
-from pcc_vizforge.utils.io import load_config, get_export_directory
+from pcc_vizforge.utils.io import get_export_directory, load_config
 
 
 class WeatherPlotlyPlot:
@@ -42,7 +43,7 @@ class WeatherPlotlyPlot:
                 x=pd.concat([data["date"], data["date"][::-1]]),
                 y=pd.concat([data["temperature_max"], data["temperature_min"][::-1]]),
                 fill='tonexty',
-                fillcolor=f'rgba(231, 76, 60, 0.2)',
+                fillcolor='rgba(231, 76, 60, 0.2)',
                 line=dict(color='rgba(255,255,255,0)'),
                 showlegend=True,
                 name='Min/Max Range'

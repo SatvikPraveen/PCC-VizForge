@@ -1,13 +1,22 @@
-"""Logging configuration for PCC-VizForge."""
+"""Logging configuration for PCC-VizForge.
 
+As a library, :mod:`pcc_vizforge` only attaches a :class:`logging.NullHandler`
+to its top-level logger; applications (including the bundled CLI) opt in to
+output by calling :func:`setup_logging`.
+"""
+
+from __future__ import annotations
+
+import copy
 import logging
 import logging.config
 from pathlib import Path
-from typing import Optional
+from typing import Any
 
+PACKAGE_LOGGER = "pcc_vizforge"
+VALID_LEVELS = frozenset({"DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"})
 
-# Default logging configuration
-LOGGING_CONFIG = {
+LOGGING_CONFIG: dict[str, Any] = {
     "version": 1,
     "disable_existing_loggers": False,
     "formatters": {
@@ -16,11 +25,11 @@ LOGGING_CONFIG = {
             "datefmt": "%Y-%m-%d %H:%M:%S",
         },
         "detailed": {
-            "format": "%(asctime)s [%(levelname)s] %(name)s (%(filename)s:%(lineno)d) - %(funcName)s(): %(message)s",
+            "format": (
+                "%(asctime)s [%(levelname)s] %(name)s "
+                "(%(filename)s:%(lineno)d) %(funcName)s(): %(message)s"
+            ),
             "datefmt": "%Y-%m-%d %H:%M:%S",
-        },
-        "simple": {
-            "format": "[%(levelname)s] %(message)s",
         },
     },
     "handlers": {
@@ -28,100 +37,59 @@ LOGGING_CONFIG = {
             "class": "logging.StreamHandler",
             "level": "INFO",
             "formatter": "standard",
-            "stream": "ext://sys.stdout",
-        },
-        "file": {
-            "class": "logging.handlers.RotatingFileHandler",
-            "level": "DEBUG",
-            "formatter": "detailed",
-            "filename": "logs/pcc_vizforge.log",
-            "maxBytes": 10485760,  # 10MB
-            "backupCount": 5,
-        },
-        "error_file": {
-            "class": "logging.handlers.RotatingFileHandler",
-            "level": "ERROR",
-            "formatter": "detailed",
-            "filename": "logs/errors.log",
-            "maxBytes": 10485760,  # 10MB
-            "backupCount": 5,
+            "stream": "ext://sys.stderr",
         },
     },
     "loggers": {
-        "pcc_vizforge": {
+        PACKAGE_LOGGER: {
             "level": "DEBUG",
-            "handlers": ["console", "file", "error_file"],
+            "handlers": ["console"],
             "propagate": False,
         },
-        "pcc_vizforge.generators": {
-            "level": "DEBUG",
-            "handlers": ["console", "file"],
-            "propagate": False,
-        },
-        "pcc_vizforge.plots": {
-            "level": "DEBUG",
-            "handlers": ["console", "file"],
-            "propagate": False,
-        },
-        "pcc_vizforge.utils": {
-            "level": "DEBUG",
-            "handlers": ["console", "file"],
-            "propagate": False,
-        },
-    },
-    "root": {
-        "level": "INFO",
-        "handlers": ["console", "file"],
     },
 }
 
 
 def setup_logging(
     level: str = "INFO",
-    log_file: Optional[str] = None,
-    config: Optional[dict] = None,
+    log_file: str | Path | None = None,
+    config: dict[str, Any] | None = None,
 ) -> None:
-    """Setup logging for PCC-VizForge.
+    """Configure logging for the ``pcc_vizforge`` logger hierarchy.
 
     Args:
-        level: Logging level (DEBUG, INFO, WARNING, ERROR, CRITICAL)
-        log_file: Optional path to log file
-        config: Optional custom logging configuration dict
+        level: Console log level (DEBUG, INFO, WARNING, ERROR, CRITICAL).
+        log_file: Optional path of a rotating DEBUG-level log file.
+        config: Optional full :func:`logging.config.dictConfig` mapping that
+            replaces the default configuration.
 
     Raises:
-        ValueError: If invalid logging level is provided
+        ValueError: If ``level`` is not a valid level name.
     """
-    valid_levels = {"DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"}
-    if level not in valid_levels:
-        raise ValueError(
-            f"Invalid logging level: {level}. Must be one of {valid_levels}"
-        )
+    level = level.upper()
+    if level not in VALID_LEVELS:
+        raise ValueError(f"Invalid logging level: {level}. Must be one of {sorted(VALID_LEVELS)}")
 
-    # Use provided config or default
-    log_config = config or LOGGING_CONFIG
+    log_config = copy.deepcopy(config if config is not None else LOGGING_CONFIG)
+    if config is None:
+        log_config["handlers"]["console"]["level"] = level
+        if log_file is not None:
+            log_path = Path(log_file)
+            log_path.parent.mkdir(parents=True, exist_ok=True)
+            log_config["handlers"]["file"] = {
+                "class": "logging.handlers.RotatingFileHandler",
+                "level": "DEBUG",
+                "formatter": "detailed",
+                "filename": str(log_path),
+                "maxBytes": 10 * 1024 * 1024,
+                "backupCount": 5,
+                "encoding": "utf-8",
+            }
+            log_config["loggers"][PACKAGE_LOGGER]["handlers"].append("file")
 
-    # Update log file path if provided
-    if log_file:
-        log_config["handlers"]["file"]["filename"] = log_file
-
-    # Create logs directory if it doesn't exist
-    log_dir = Path(log_config["handlers"]["file"]["filename"]).parent
-    log_dir.mkdir(exist_ok=True, parents=True)
-
-    # Set root logger level
-    log_config["root"]["level"] = level
-
-    # Apply configuration
     logging.config.dictConfig(log_config)
 
 
 def get_logger(name: str) -> logging.Logger:
-    """Get a logger instance.
-
-    Args:
-        name: Logger name (typically __name__)
-
-    Returns:
-        Configured logger instance
-    """
+    """Return a logger (thin wrapper kept for backwards compatibility)."""
     return logging.getLogger(name)

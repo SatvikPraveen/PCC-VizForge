@@ -10,6 +10,8 @@ The package is organised in layers:
 
 from __future__ import annotations
 
+import logging
+
 from pcc_vizforge._version import __version__
 from pcc_vizforge.exceptions import (
     ConfigFileNotFoundError,
@@ -31,6 +33,8 @@ from pcc_vizforge.generators import (
     RandomWalkGenerator,
     WeatherGenerator,
 )
+
+logging.getLogger(__name__).addHandler(logging.NullHandler())
 
 __author__ = "Satvik Praveen"
 __email__ = "satvikpraveen707@gmail.com"

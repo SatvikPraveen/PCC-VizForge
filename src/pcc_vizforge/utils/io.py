@@ -4,36 +4,45 @@ import json
 import logging
 import pickle
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, List, Union
 
 import pandas as pd
 import yaml
 
-from pcc_vizforge.exceptions import (
-    ConfigFileNotFoundError,
-    ConfigurationError,
-    ExportError,
-    IOError as PccIOError,
-    InvalidConfigurationError,
-    ValidationError,
-)
 from pcc_vizforge.constants import (
     CONFIG_DIR,
     DATA_DIR,
-    EXPORT_DIR,
     HTML_EXPORT_DIR,
     IMAGE_EXPORT_DIR,
     LOGS_DIR,
+)
+from pcc_vizforge.exceptions import (
+    ConfigFileNotFoundError,
+    ExportError,
+    InvalidConfigurationError,
+    ValidationError,
+)
+from pcc_vizforge.exceptions import (
+    IOError as PccIOError,
 )
 
 logger = logging.getLogger(__name__)
 
 
-def load_config(config_name: str) -> Dict[str, Any]:
+def resolve_config_path(config_name: str | Path) -> Path:
+    """Resolve a bundled config name (``"dice"``) or a filesystem path."""
+    candidate = Path(config_name)
+    if candidate.suffix in {".yaml", ".yml"} or candidate.is_file():
+        return candidate
+    return CONFIG_DIR / f"{config_name}.yaml"
+
+
+def load_config(config_name: str | Path) -> dict[str, Any]:
     """Load configuration from YAML file.
 
     Args:
-        config_name: Name of the config file (without .yaml extension)
+        config_name: Name of a bundled config (without ``.yaml``) or a path
+            to a user-supplied YAML file.
 
     Returns:
         Dictionary containing configuration data
@@ -42,7 +51,7 @@ def load_config(config_name: str) -> Dict[str, Any]:
         ConfigFileNotFoundError: If config file doesn't exist
         InvalidConfigurationError: If config file is invalid YAML
     """
-    config_path = CONFIG_DIR / f"{config_name}.yaml"
+    config_path = resolve_config_path(config_name)
 
     logger.debug(f"Loading configuration from: {config_path}")
 
@@ -54,19 +63,22 @@ def load_config(config_name: str) -> Dict[str, Any]:
         )
 
     try:
-        with open(config_path, "r", encoding="utf-8") as f:
+        with open(config_path, encoding="utf-8") as f:
             config = yaml.safe_load(f)
-
-        if config is None:
-            logger.error(f"Configuration file is empty: {config_path}")
-            raise InvalidConfigurationError(f"Configuration file is empty: {config_path}")
-
-        logger.debug(f"Successfully loaded configuration: {config_name}")
-        return config
-
     except yaml.YAMLError as e:
         logger.error(f"Error parsing config file {config_path}: {e}")
-        raise InvalidConfigurationError(f"Error parsing config file {config_path}: {e}")
+        raise InvalidConfigurationError(f"Error parsing config file {config_path}: {e}") from e
+
+    if config is None:
+        logger.error(f"Configuration file is empty: {config_path}")
+        raise InvalidConfigurationError(f"Configuration file is empty: {config_path}")
+    if not isinstance(config, dict):
+        raise InvalidConfigurationError(
+            f"Top level of {config_path} must be a mapping, got {type(config).__name__}"
+        )
+
+    logger.debug(f"Successfully loaded configuration: {config_name}")
+    return config
 
 
 def ensure_directory_exists(file_path: Union[str, Path]) -> None:

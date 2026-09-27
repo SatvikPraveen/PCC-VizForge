@@ -1,11 +1,12 @@
 """Plotly plotting for earthquake data."""
 
 from typing import Optional
+
+import pandas as pd
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
-import pandas as pd
 
-from pcc_vizforge.utils.io import load_config, get_export_directory
+from pcc_vizforge.utils.io import get_export_directory, load_config
 
 
 class EarthquakePlotlyPlot:

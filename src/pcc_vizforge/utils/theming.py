@@ -2,9 +2,8 @@
 
 from typing import Dict, List, Optional, Union
 
-import matplotlib.pyplot as plt
 import matplotlib as mpl
-
+import matplotlib.pyplot as plt
 
 # Color palettes
 COLOR_PALETTES = {
