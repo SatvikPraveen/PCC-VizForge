@@ -8,6 +8,7 @@ import pytest
 from scipy import stats
 
 from pcc_vizforge.analysis.timeseries import (
+    andrews_bandwidth,
     fit_harmonics,
     fit_markov_chain,
     heat_index_c,
@@ -104,6 +105,33 @@ class TestHarmonics:
     def test_invalid(self):
         with pytest.raises(InvalidParameterError):
             fit_harmonics(np.arange(3.0), np.arange(3.0), n_harmonics=2)
+
+    def test_hac_equals_white_with_zero_lags_and_grows_with_persistence(self):
+        t = np.arange(2000.0)
+        y = 0.001 * t + ar1(make_rng(3), 2000, 0.8, 1.0)
+        fit0 = fit_harmonics(t, y, n_harmonics=1, hac_lags=0)
+        fit = fit_harmonics(t, y, n_harmonics=1)
+        assert fit.hac_lags > 10
+        assert fit.trend_stderr_hac > 2 * fit.trend_stderr
+        assert fit0.trend_stderr_hac == pytest.approx(fit0.trend_stderr, rel=0.1)
+
+    def test_andrews_bandwidth(self):
+        assert andrews_bandwidth(make_rng(0).standard_normal(1000)) <= 3
+        assert andrews_bandwidth(ar1(make_rng(0), 1000, 0.9, 1.0)) > 20
+
+    @pytest.mark.slow
+    @pytest.mark.statistical
+    def test_hac_coverage_beats_ols(self):
+        hac = ols = 0
+        n_rep = 150
+        for rng in spawn_rngs(12, n_rep):
+            t = np.arange(1500.0)
+            y = 10 + 0.002 * t + 5 * np.sin(2 * np.pi * t / 365.25) + ar1(rng, 1500, 0.7, 3.0)
+            fit = fit_harmonics(t, y, n_harmonics=1)
+            hac += abs(fit.trend_per_unit - 0.002) < 1.96 * fit.trend_stderr_hac
+            ols += abs(fit.trend_per_unit - 0.002) < 1.96 * fit.trend_stderr
+        assert hac / n_rep >= 0.85
+        assert ols / n_rep < 0.7
 
 
 class TestMarkov:

@@ -18,6 +18,11 @@ Richardson, C. W. (1981). Stochastic simulation of daily precipitation,
     temperature, and solar radiation. *Water Resour. Res.* 17(1), 182-190.
 Alduchov, O. A. & Eskridge, R. E. (1996). Improved Magnus form
     approximation of saturation vapor pressure. *J. Appl. Meteor.* 35.
+Newey, W. K. & West, K. D. (1987). A simple, positive semi-definite,
+    heteroskedasticity and autocorrelation consistent covariance matrix.
+    *Econometrica* 55(3), 703-708.
+Andrews, D. W. K. (1991). Heteroskedasticity and autocorrelation consistent
+    covariance matrix estimation. *Econometrica* 59(3), 817-858.
 Rothfusz, L. P. (1990). The heat index equation. NWS Technical Attachment
     SR 90-23.
 """
@@ -37,10 +42,12 @@ from pcc_vizforge.exceptions import InvalidParameterError
 __all__ = [
     "HarmonicFit",
     "MarkovChainFit",
+    "andrews_bandwidth",
     "fit_harmonics",
     "fit_markov_chain",
     "heat_index_c",
     "mann_kendall",
+    "newey_west_cov",
     "relative_humidity",
     "saturation_vapor_pressure",
     "sens_slope",
@@ -105,6 +112,8 @@ class HarmonicFit:
     mean: float
     trend_per_unit: float
     trend_stderr: float
+    trend_stderr_hac: float
+    hac_lags: int
     amplitudes: tuple[float, ...]
     phases: tuple[float, ...]
     period: float
@@ -130,14 +139,56 @@ def _harmonic_design(t: NDArray[np.float64], period: float, n_harmonics: int, tr
     return np.column_stack(cols)
 
 
+def newey_west_cov(X: NDArray[np.float64], resid: NDArray[np.float64], lags: int) -> NDArray[np.float64]:
+    """Heteroskedasticity- and autocorrelation-consistent (HAC) covariance.
+
+    Newey & West (1987) sandwich estimator with Bartlett weights
+    :math:`w_\\ell = 1 - \\ell/(L+1)`.
+    """
+    n = X.shape[0]
+    u = X * resid[:, None]
+    S = u.T @ u
+    for lag in range(1, lags + 1):
+        w = 1.0 - lag / (lags + 1.0)
+        G = u[lag:].T @ u[:-lag]
+        S += w * (G + G.T)
+    bread = np.linalg.inv(X.T @ X)
+    return bread @ S @ bread * n / (n - X.shape[1])
+
+
+def andrews_bandwidth(resid: ArrayLike) -> int:
+    """Andrews (1991) AR(1) plug-in bandwidth for the Bartlett kernel.
+
+    :math:`L = \\lfloor 1.1447\\,(\\hat\\alpha\\, n)^{1/3} \\rfloor` with
+    :math:`\\hat\\alpha = 4\\hat\\rho^2 / (1 - \\hat\\rho^2)^2`.
+    """
+    e = np.asarray(resid, dtype=float)
+    n = e.size
+    denom = float(np.sum(e[:-1] ** 2))
+    rho = float(np.sum(e[1:] * e[:-1]) / denom) if denom > 0 else 0.0
+    rho = float(np.clip(rho, -0.97, 0.97))
+    alpha = 4 * rho**2 / (1 - rho**2) ** 2
+    return int(min(max(np.floor(1.1447 * (alpha * n) ** (1 / 3)), 0), n - 2))
+
+
 def fit_harmonics(
-    t: ArrayLike, y: ArrayLike, *, period: float = 365.25, n_harmonics: int = 2
+    t: ArrayLike,
+    y: ArrayLike,
+    *,
+    period: float = 365.25,
+    n_harmonics: int = 2,
+    hac_lags: int | None = None,
 ) -> HarmonicFit:
     """Least-squares harmonic regression with a linear trend.
 
     ``amplitudes[k]`` and ``phases[k]`` (radians) describe
-    :math:`A_k \\cos(2\\pi k t / P - \\phi_k)`. The trend standard error is
-    the classical OLS one; inflate it for autocorrelated residuals.
+    :math:`A_k \\cos(2\\pi k t / P - \\phi_k)`.
+
+    Two trend standard errors are reported: the classical OLS one
+    (``trend_stderr``, valid only for independent residuals) and the
+    Newey-West HAC one (``trend_stderr_hac``) with ``hac_lags`` lags --
+    by default Andrews' (1991) AR(1) plug-in bandwidth -- which should be
+    used whenever residuals are serially correlated (e.g. daily weather).
     """
     tt = np.asarray(t, dtype=float)
     yy = np.asarray(y, dtype=float)
@@ -157,10 +208,14 @@ def fit_harmonics(
         amps.append(float(np.hypot(a, b)))
         phases.append(float(np.arctan2(b, a)))
     ss_tot = float(np.sum((yy - yy.mean()) ** 2))
+    L = andrews_bandwidth(resid) if hac_lags is None else int(hac_lags)
+    cov_hac = newey_west_cov(X, resid, L)
     return HarmonicFit(
         mean=float(coef[0]),
         trend_per_unit=float(coef[1]),
         trend_stderr=float(np.sqrt(cov[1, 1])),
+        trend_stderr_hac=float(np.sqrt(cov_hac[1, 1])),
+        hac_lags=L,
         amplitudes=tuple(amps),
         phases=tuple(phases),
         period=period,

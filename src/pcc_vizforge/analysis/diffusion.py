@@ -26,9 +26,11 @@ from numpy.typing import ArrayLike, NDArray
 from scipy import stats
 
 from pcc_vizforge.exceptions import InvalidParameterError
+from pcc_vizforge.rng import SeedLike, make_rng
 
 __all__ = [
     "PowerLawFit",
+    "bootstrap_msd_exponent",
     "dfa",
     "ensemble_msd",
     "ergodicity_breaking_parameter",
@@ -152,6 +154,12 @@ def fit_msd_exponent(
 ) -> PowerLawFit:
     """Estimate the anomalous exponent α in MSD ∝ Δ^α by log-log regression.
 
+    .. warning::
+        The reported standard error treats MSD values at different lags as
+        independent. Ensemble MSDs at neighbouring lags are strongly
+        correlated, so this CI is too narrow; use
+        :func:`bootstrap_msd_exponent` (resampling walks) for inference.
+
     Args:
         lags: Lag times (> 0).
         msd: MSD values (> 0) at those lags.
@@ -198,6 +206,50 @@ def fit_msd_exponent(
         r_squared=r2,
         n_points=int(n),
         x_range=(float(x[mask].min()), float(x[mask].max())),
+    )
+
+
+def bootstrap_msd_exponent(
+    positions: ArrayLike,
+    *,
+    lags: ArrayLike | None = None,
+    n_bootstrap: int = 500,
+    confidence: float = 0.95,
+    seed: SeedLike = None,
+) -> PowerLawFit:
+    """Anomalous exponent with a walk-level bootstrap confidence interval.
+
+    Walks are the independent sampling unit, so resampling them with
+    replacement and re-fitting the ensemble MSD yields a CI that accounts for
+    the correlation between lags. The point estimate is the fit on the full
+    ensemble; ``alpha_stderr`` is the bootstrap standard deviation and
+    ``alpha_ci`` the percentile interval.
+    """
+    pos = _as_positions(positions)
+    w, n, _ = pos.shape
+    if w < 2:
+        raise InvalidParameterError("bootstrap needs at least two walks")
+    lag_arr = log_spaced_lags(n + 1) if lags is None else np.asarray(lags, dtype=np.int64)
+    if np.any(lag_arr < 1) or np.any(lag_arr > n):
+        raise InvalidParameterError(f"lags must lie in [1, {n}]")
+    sq = np.sum(pos[:, lag_arr - 1] ** 2, axis=-1)  # (walks, lags)
+    point = fit_msd_exponent(lag_arr, sq.mean(axis=0))
+    rng = make_rng(seed)
+    idx = rng.integers(0, w, size=(n_bootstrap, w))
+    boot_msd = sq[idx].mean(axis=1)  # (n_bootstrap, lags)
+    log_x = np.log(lag_arr.astype(float))
+    xc = log_x - log_x.mean()
+    alphas = (np.log(boot_msd) - np.log(boot_msd).mean(axis=1, keepdims=True)) @ xc / (xc @ xc)
+    q = (1 - confidence) / 2
+    lo, hi = np.quantile(alphas, [q, 1 - q])
+    return PowerLawFit(
+        alpha=point.alpha,
+        alpha_stderr=float(alphas.std(ddof=1)),
+        alpha_ci=(float(lo), float(hi)),
+        prefactor=point.prefactor,
+        r_squared=point.r_squared,
+        n_points=point.n_points,
+        x_range=point.x_range,
     )
 
 

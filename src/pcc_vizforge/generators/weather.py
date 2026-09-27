@@ -292,7 +292,11 @@ class WeatherGenerator(BaseGenerator[WeatherParams]):
             "n_days": len(data),
             "temperature_mean": float(temp.mean()),
             "harmonic_fit": harmonic.to_dict(),
-            "trend_c_per_decade_ols": harmonic.trend_per_unit * 3652.5,
+            "trend_c_per_decade": harmonic.trend_per_unit * 3652.5,
+            # Newey-West HAC SE: daily anomalies are autocorrelated, so the OLS
+            # SE (also reported) is far too small.
+            "trend_se_c_per_decade_hac": harmonic.trend_stderr_hac * 3652.5,
+            "trend_se_c_per_decade_ols": harmonic.trend_stderr * 3652.5,
             "wet_day_fraction": float(data["is_rainy_day"].mean()),
             "total_precipitation_mm": float(data["precipitation"].sum()),
             "humidity_temperature_correlation": float(np.corrcoef(temp, data["humidity"])[0, 1]),

@@ -9,6 +9,7 @@ from hypothesis import given, settings
 from hypothesis import strategies as st
 
 from pcc_vizforge.analysis.diffusion import (
+    bootstrap_msd_exponent,
     dfa,
     ensemble_msd,
     ergodicity_breaking_parameter,
@@ -148,6 +149,33 @@ class TestAgainstTheory:
         t = np.arange(1, 1025)
         fit = fit_msd_exponent(t, msd, sigma=sem)
         assert fit.alpha == pytest.approx(2 * hurst, abs=0.04)
+
+    @pytest.mark.slow
+    def test_bootstrap_ci_covers_true_exponent(self):
+        """Walk-level bootstrap CIs should have near-nominal coverage, unlike the
+        naive regression CI which ignores correlation between lags."""
+        from pcc_vizforge.rng import spawn_seeds
+
+        hits_boot = hits_naive = 0
+        n_rep = 60
+        for i, ss in enumerate(spawn_seeds(3, n_rep)):
+            p = RandomWalkParams(n_steps=400, n_walks=150, model="fbm", hurst=0.35)
+            pos = np.cumsum(simulate_increments(p, make_rng(ss)), axis=1)
+            boot = bootstrap_msd_exponent(pos, n_bootstrap=300, seed=i)
+            hits_boot += boot.alpha_ci[0] <= 0.7 <= boot.alpha_ci[1]
+            msd, sem = ensemble_msd(pos)
+            naive = fit_msd_exponent(np.arange(1, 401), msd, sigma=sem)
+            hits_naive += naive.alpha_ci[0] <= 0.7 <= naive.alpha_ci[1]
+        assert hits_boot / n_rep >= 0.85
+        assert hits_naive < hits_boot
+
+    def test_bootstrap_reproducible(self):
+        _, pos = _positions(n_steps=100, n_walks=20, model="gaussian")
+        a = bootstrap_msd_exponent(pos, n_bootstrap=50, seed=1)
+        assert a == bootstrap_msd_exponent(pos, n_bootstrap=50, seed=1)
+        assert a.alpha_ci[0] < a.alpha < a.alpha_ci[1]
+        with pytest.raises(InvalidParameterError):
+            bootstrap_msd_exponent(pos[:1])
 
     def test_regime_classification(self):
         t = np.arange(1, 200)
