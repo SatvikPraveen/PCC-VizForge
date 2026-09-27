@@ -12,6 +12,9 @@ probability
 seismology
     Gutenberg-Richter b-value MLEs, magnitude of completeness, Omori-Utsu
     fitting, inter-event statistics.
+heavy_tails
+    Clauset-Shalizi-Newman power-law fitting, bootstrap GOF, Vuong tests,
+    Hill estimator, Gini coefficient.
 timeseries
     Harmonic regression, Mann-Kendall / Sen trend tests, wet-dry Markov
     chains, humidity and heat-index thermodynamics.
@@ -19,7 +22,13 @@ timeseries
 
 from __future__ import annotations
 
-from pcc_vizforge.analysis import diffusion, probability, seismology, timeseries
+from pcc_vizforge.analysis import (
+    diffusion,
+    heavy_tails,
+    probability,
+    seismology,
+    timeseries,
+)
 from pcc_vizforge.analysis.inference import (
     ConfidenceInterval,
     TestResult,
@@ -39,6 +48,7 @@ __all__ = [
     "bootstrap_ci",
     "chi_square_gof",
     "diffusion",
+    "heavy_tails",
     "ljung_box",
     "probability",
     "runs_test",

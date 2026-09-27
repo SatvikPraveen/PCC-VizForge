@@ -116,6 +116,7 @@ check_untyped_defs = true
 [tool.pytest.ini_options]
 minversion = "7.0"
 testpaths = ["tests"]
+pythonpath = ["src"]
 addopts = ["-ra", "--strict-markers", "--strict-config"]
 markers = [
     "slow: long-running statistical / Monte Carlo tests (deselect with -m 'not slow')",

@@ -1,6 +1,6 @@
 # GitHub Statistics Configuration
 data_generation:
-  n_repositories: 20
+  n_repositories: 500
   languages:
     [
       "Python",
@@ -13,14 +13,21 @@ data_generation:
       "HTML",
       "CSS",
     ]
+  language_weights: null # null = uniform
+  reference_date: "2024-01-01" # all dates are relative to this (reproducible)
+  max_age_days: 3650
   activity_days: 365
   random_seed: 42
 
-  # Repository metrics ranges
-  stars_range: [0, 5000]
-  forks_range: [0, 1000]
-  issues_range: [0, 200]
-  commits_range: [1, 2000]
+  # Heavy-tailed popularity: latent Pareto(alpha) -> Poisson star counts,
+  # so stars inherit a power-law tail with pdf exponent alpha.
+  popularity_exponent: 2.0
+  stars_scale: 2.0
+  age_exponent: 0.5 # stars grow ~ age^0.5
+  fork_ratio_beta: [2.0, 10.0] # per-repo fork propensity ~ Beta(a, b)
+  contributors_scale: 0.5
+  commits_per_day: 0.3
+  commits_dispersion: 1.5 # negative-binomial k (smaller = more overdispersed)
 
 visualization:
   matplotlib:
