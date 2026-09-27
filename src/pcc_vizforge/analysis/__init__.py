@@ -7,11 +7,13 @@ inference
 diffusion
     MSD / TAMSD, anomalous-exponent fitting, ergodicity breaking, DFA,
     first-passage times.
+probability
+    Exact dice-sum PMFs by convolution, die moments, CLT bands.
 """
 
 from __future__ import annotations
 
-from pcc_vizforge.analysis import diffusion
+from pcc_vizforge.analysis import diffusion, probability
 from pcc_vizforge.analysis.inference import (
     ConfidenceInterval,
     TestResult,
@@ -32,5 +34,6 @@ __all__ = [
     "chi_square_gof",
     "diffusion",
     "ljung_box",
+    "probability",
     "runs_test",
 ]

@@ -3,6 +3,8 @@ data_generation:
   n_rolls: 1000
   n_dice: 2
   dice_sides: 6
+  # Optional face weights for loaded dice, e.g. [1, 1, 1, 1, 1, 2]; null = fair
+  weights: null
   random_seed: 42
 
 visualization:
