@@ -1,13 +1,10 @@
-# ================================
-# Location: tests/test_plots.py
-
 """Tests for plotting modules."""
 
 import pytest
 import pandas as pd
 import matplotlib.pyplot as plt
-from src.generators import RandomWalkGenerator, DiceGenerator
-from src.plots import RandomWalkMatplotlibPlot, DiceMatplotlibPlot
+from pcc_vizforge.generators import RandomWalkGenerator, DiceGenerator
+from pcc_vizforge.plots import RandomWalkMatplotlibPlot, DiceMatplotlibPlot
 
 
 class TestRandomWalkPlot:
@@ -56,8 +53,8 @@ class TestPlotlyImports:
     def test_import_plotly_modules(self):
         """Test that plotly plot modules can be imported."""
         try:
-            from src.plots.random_walk_plotly import RandomWalkPlotlyPlot
-            from src.plots.dice_plotly import DicePlotlyPlot
+            from pcc_vizforge.plots.random_walk_plotly import RandomWalkPlotlyPlot
+            from pcc_vizforge.plots.dice_plotly import DicePlotlyPlot
             assert True  # If we get here, imports worked
         except ImportError as e:
             pytest.skip(f"Plotly not available: {e}")

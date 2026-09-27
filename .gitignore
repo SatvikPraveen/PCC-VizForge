@@ -156,3 +156,8 @@ Thumbs.db
 .env.local
 secrets.yaml
 api_keys.yaml
+# Generated artefacts (outputs are written relative to the working directory)
+/data/
+/logs/
+/runs/
+/outputs/

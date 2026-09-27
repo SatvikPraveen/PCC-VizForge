@@ -1,11 +1,8 @@
-# ================================
-# Location: tests/test_generators.py
-
 """Tests for data generators."""
 
 import pytest
 import pandas as pd
-from src.generators import (
+from pcc_vizforge.generators import (
     RandomWalkGenerator, DiceGenerator, WeatherGenerator, 
     EarthquakeGenerator, GitHubGenerator
 )

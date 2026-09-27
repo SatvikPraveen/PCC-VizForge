@@ -1,0 +1,37 @@
+# Random Walk Configuration
+data_generation:
+  n_steps: 1000
+  n_walks: 5
+  step_size: 1.0
+  random_seed: 42
+  dimensions: 1 # 1D or 2D random walks
+
+visualization:
+  matplotlib:
+    figsize: [12, 8]
+    title: "Random Walk Simulation"
+    xlabel: "Steps"
+    ylabel: "Position"
+    color_scheme: ["#1f77b4", "#ff7f0e", "#2ca02c", "#d62728", "#9467bd"]
+    line_style: "-"
+    line_width: 2
+    grid: true
+    legend: true
+    alpha: 0.8
+
+  plotly:
+    title: "Interactive Random Walk Simulation"
+    xaxis_title: "Steps"
+    yaxis_title: "Position"
+    width: 900
+    height: 600
+    color_scheme: ["#1f77b4", "#ff7f0e", "#2ca02c", "#d62728", "#9467bd"]
+    line_width: 2
+    show_legend: true
+    template: "plotly_white"
+
+export:
+  filename_prefix: "random_walk"
+  image_format: "png"
+  image_dpi: 300
+  html_include_plotlyjs: "cdn"

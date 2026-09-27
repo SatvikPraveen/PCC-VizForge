@@ -6,26 +6,26 @@ import pandas as pd
 import numpy as np
 from pathlib import Path
 
-from src.exceptions import (
+from pcc_vizforge.exceptions import (
     InvalidParameterError,
     DataGenerationError,
     DataShapeError,
 )
-from src.generators import (
+from pcc_vizforge.generators import (
     RandomWalkGenerator,
     DiceGenerator,
     WeatherGenerator,
     EarthquakeGenerator,
     GitHubGenerator,
 )
-from src.utils.io import (
+from pcc_vizforge.utils.io import (
     load_config,
     save_data,
     load_data,
     list_available_configs,
     get_data_directory,
 )
-from src.utils.validation import (
+from pcc_vizforge.utils.validation import (
     validate_positive_int,
     validate_positive_float,
     validate_dimensions,

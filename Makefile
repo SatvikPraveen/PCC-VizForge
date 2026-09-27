@@ -69,7 +69,7 @@ test-verbose:
 
 test-coverage:
 	@echo "Running tests with coverage..."
-	pytest --cov=src --cov-report=html --cov-report=term-missing tests/
+	pytest --cov=pcc_vizforge --cov-report=html --cov-report=term-missing tests/
 	@echo "✓ Coverage report generated in htmlcov/index.html"
 
 test-quick:
@@ -97,7 +97,7 @@ check-format:
 
 type-check:
 	@echo "Running type checking with mypy..."
-	mypy src/ --ignore-missing-imports
+	mypy --ignore-missing-imports
 	@echo "✓ Type checking complete"
 
 all-checks: check-format lint type-check test
@@ -172,19 +172,19 @@ publish:
 
 generate-all:
 	@echo "Generating all visualizations..."
-	python -m src.cli random_walk --library matplotlib --export-type image
-	python -m src.cli random_walk --library plotly --export-type html
-	python -m src.cli dice --library matplotlib --export-type image
-	python -m src.cli dice --library plotly --export-type html
-	python -m src.cli weather --library matplotlib --export-type image
-	python -m src.cli weather --library plotly --export-type html
-	python -m src.cli quakes --library matplotlib --export-type image
-	python -m src.cli quakes --library plotly --export-type html
-	python -m src.cli github --library matplotlib --export-type image
-	python -m src.cli github --library plotly --export-type html
+	python -m pcc_vizforge.cli random_walk --library matplotlib --export-type image
+	python -m pcc_vizforge.cli random_walk --library plotly --export-type html
+	python -m pcc_vizforge.cli dice --library matplotlib --export-type image
+	python -m pcc_vizforge.cli dice --library plotly --export-type html
+	python -m pcc_vizforge.cli weather --library matplotlib --export-type image
+	python -m pcc_vizforge.cli weather --library plotly --export-type html
+	python -m pcc_vizforge.cli quakes --library matplotlib --export-type image
+	python -m pcc_vizforge.cli quakes --library plotly --export-type html
+	python -m pcc_vizforge.cli github --library matplotlib --export-type image
+	python -m pcc_vizforge.cli github --library plotly --export-type html
 	@echo "✓ All visualizations generated"
 
 demo:
 	@echo "Running demo..."
-	python -m src.cli demo --library matplotlib
+	python -m pcc_vizforge.cli demo --library matplotlib
 	@echo "✓ Demo complete"
