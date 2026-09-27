@@ -9,6 +9,10 @@ from __future__ import annotations
 import importlib
 from typing import Any
 
+# Imported eagerly: registers the `pcc` Plotly templates and colormaps that the
+# dashboards reference by name. It has no intra-package dependencies.
+from pcc_vizforge.plots import style as style
+
 _LAZY: dict[str, str] = {
     "RandomWalkMatplotlibPlot": "random_walk_mpl",
     "RandomWalkPlotlyPlot": "random_walk_plotly",
@@ -22,7 +26,7 @@ _LAZY: dict[str, str] = {
     "GitHubPlotlyPlot": "github_plotly",
 }
 
-__all__ = sorted(_LAZY)
+__all__ = sorted([*_LAZY, "style"])
 
 
 def __getattr__(name: str) -> Any:

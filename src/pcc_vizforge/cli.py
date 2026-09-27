@@ -1,505 +1,292 @@
-"""Command-line interface for PCC VizForge."""
+"""Command-line interface for PCC-VizForge.
 
-from typing import Optional
+Examples::
+
+    pcc-vizforge run quakes --seed 7 --set data_generation.b_value=0.8
+    pcc-vizforge verify runs/quakes-20240101-120000-abc123def456
+    pcc-vizforge validate b_value --replicates 500
+    pcc-vizforge dashboard weather --library plotly --export-type html
+"""
+
+from __future__ import annotations
+
+import functools
+import json
+import logging
+from collections.abc import Callable
+from pathlib import Path
+from typing import Any, TypeVar
 
 import click
 import yaml
 
+from pcc_vizforge._version import __version__
 from pcc_vizforge.exceptions import PccVizForgeError
-from pcc_vizforge.generators import (
-    DiceGenerator,
-    EarthquakeGenerator,
-    GitHubGenerator,
-    RandomWalkGenerator,
-    WeatherGenerator,
-)
-from pcc_vizforge.logging_config import get_logger, setup_logging
-from pcc_vizforge.plots import (
-    DiceMatplotlibPlot,
-    EarthquakeMatplotlibPlot,
-    GitHubMatplotlibPlot,
-    RandomWalkMatplotlibPlot,
-    WeatherMatplotlibPlot,
-)
+from pcc_vizforge.logging_config import setup_logging
+from pcc_vizforge.utils.config import apply_overrides
 from pcc_vizforge.utils.io import list_available_configs, load_config
 
-logger = get_logger(__name__)
+logger = logging.getLogger(__name__)
+
+F = TypeVar("F", bound=Callable[..., Any])
+
+DOMAIN_NAMES = ("random_walk", "dice", "weather", "quakes", "github")
+DASHBOARD_CLASSES = {
+    "random_walk": ("RandomWalkMatplotlibPlot", "RandomWalkPlotlyPlot"),
+    "dice": ("DiceMatplotlibPlot", "DicePlotlyPlot"),
+    "weather": ("WeatherMatplotlibPlot", "WeatherPlotlyPlot"),
+    "quakes": ("EarthquakeMatplotlibPlot", "EarthquakePlotlyPlot"),
+    "github": ("GitHubMatplotlibPlot", "GitHubPlotlyPlot"),
+}
 
 
-def handle_error(func):
-    """Decorator to handle exceptions in CLI commands.
+def handle_error(func: F) -> F:
+    """Turn package errors into a clean message and exit code 1."""
 
-    Args:
-        func: CLI command function to decorate
-
-    Returns:
-        Decorated function with error handling
-    """
-
-    def wrapper(*args, **kwargs):
+    @functools.wraps(func)
+    def wrapper(*args: Any, **kwargs: Any) -> Any:
         try:
             return func(*args, **kwargs)
-        except PccVizForgeError as e:
-            logger.error(f"PCC VizForge error: {e}")
-            click.echo(click.style(f"Error: {e}", fg="red"), err=True)
-            raise SystemExit(1)
-        except Exception as e:
-            logger.error(f"Unexpected error: {e}", exc_info=True)
-            click.echo(
-                click.style(f"Unexpected error: {e}", fg="red"),
-                err=True,
-            )
-            raise SystemExit(1)
+        except PccVizForgeError as exc:
+            logger.debug("Command failed", exc_info=True)
+            click.echo(click.style(f"Error: {exc}", fg="red"), err=True)
+            raise SystemExit(1) from exc
 
-    return wrapper
+    return wrapper  # type: ignore[return-value]
+
+
+domain_argument = click.argument("domain", type=click.Choice(DOMAIN_NAMES))
+set_option = click.option(
+    "--set",
+    "overrides",
+    multiple=True,
+    metavar="KEY.PATH=VALUE",
+    help="Override a config value (repeatable), e.g. --set data_generation.n_steps=500",
+)
+config_option = click.option(
+    "--config", "config", type=click.Path(dir_okay=False), help="YAML config file (defaults to the bundled one)."
+)
+seed_option = click.option("--seed", type=click.IntRange(min=0), help="RNG seed (overrides the config).")
 
 
 @click.group()
-@click.version_option(package_name="pcc-vizforge")
+@click.version_option(__version__, package_name="pcc-vizforge")
 @click.option(
     "--log-level",
-    type=click.Choice(["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]),
-    default="INFO",
-    help="Set logging level",
+    type=click.Choice(["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"], case_sensitive=False),
+    default="WARNING",
+    show_default=True,
 )
-def main(log_level: str) -> None:
-    """PCC VizForge - Comprehensive Data Visualization Toolkit.
-
-    A personal exploration into data visualization and synthetic data generation.
-    """
-    setup_logging(level=log_level)
-    logger.debug(f"PCC VizForge CLI initialized with log level: {log_level}")
+@click.option("--log-file", type=click.Path(dir_okay=False), help="Also write DEBUG logs to this file.")
+def main(log_level: str, log_file: str | None) -> None:
+    """PCC-VizForge: reproducible stochastic simulation, inference and visualisation."""
+    setup_logging(level=log_level, log_file=log_file)
 
 
+# --------------------------------------------------------------------------- #
+# Research workflow
+# --------------------------------------------------------------------------- #
 @main.command()
+@domain_argument
+@config_option
+@set_option
+@seed_option
+@click.option("--out", "output_dir", default="runs", show_default=True, type=click.Path(file_okay=False))
+@click.option("--figures/--no-figures", default=True, show_default=True)
 @click.option(
-    "--library",
-    type=click.Choice(["matplotlib", "plotly"]),
-    default="matplotlib",
-    help="Visualization library to use",
+    "--format",
+    "formats",
+    multiple=True,
+    type=click.Choice(["png", "pdf", "svg"]),
+    default=("png",),
+    show_default=True,
+    help="Figure format (repeatable).",
 )
-@click.option(
-    "--export-type",
-    type=click.Choice(["image", "html"]),
-    default="image",
-    help="Export format",
-)
-@click.option("--save/--no-save", default=True, help="Save generated data")
-@click.option("--filename", help="Custom output filename")
+@click.option("--name", "run_name", help="Run folder name (default: <domain>-<timestamp>-<id>).")
 @handle_error
-def random_walk(
-    library: str, export_type: str, save: bool, filename: Optional[str]
+def run(
+    domain: str,
+    config: str | None,
+    overrides: tuple[str, ...],
+    seed: int | None,
+    output_dir: str,
+    figures: bool,
+    formats: tuple[str, ...],
+    run_name: str | None,
 ) -> None:
-    """Generate random walk visualization."""
-    click.echo("Generating random walk data...")
-    logger.info("Starting random walk generation")
+    """Simulate, analyse and plot DOMAIN into a reproducible run directory."""
+    from pcc_vizforge.experiments import run_experiment
 
-    try:
-        # Generate data
-        generator = RandomWalkGenerator()
-        data = generator.generate(save_to_file=save)
-
-        # Create visualization
-        if library == "matplotlib":
-            plotter = RandomWalkMatplotlibPlot()
-            fig = plotter.plot(data)
-
-            if export_type == "image":
-                output_path = plotter.save(fig, filename)
-                click.echo(f"✓ Saved matplotlib plot to: {output_path}")
-                logger.info(f"Saved random walk plot to: {output_path}")
-            else:
-                click.echo(
-                    click.style(
-                        "HTML export not supported for matplotlib. "
-                        "Use plotly instead.",
-                        fg="yellow",
-                    )
-                )
-
-        elif library == "plotly":
-            from pcc_vizforge.plots.random_walk_plotly import RandomWalkPlotlyPlot
-
-            plotter = RandomWalkPlotlyPlot()
-            fig = plotter.plot(data)
-
-            if export_type == "html":
-                output_path = plotter.save(fig, filename)
-                click.echo(f"✓ Saved plotly plot to: {output_path}")
-                logger.info(f"Saved random walk HTML to: {output_path}")
-            else:
-                output_path = plotter.save_image(fig, filename)
-                click.echo(f"✓ Saved plotly image to: {output_path}")
-                logger.info(f"Saved random walk image to: {output_path}")
-
-        click.echo(
-            f"Generated {len(data)} data points for {data['walk_id'].nunique()} walks"
-        )
-        logger.info("Random walk generation completed successfully")
-
-    except Exception as e:
-        logger.error(f"Failed to generate random walk: {e}")
-        raise
+    result = run_experiment(
+        domain,
+        config=config,
+        overrides=overrides,
+        seed=seed,
+        output_dir=output_dir,
+        figures=figures,
+        formats=formats,
+        run_name=run_name,
+    )
+    click.echo(f"Run {result.manifest.run_id} (seed {result.manifest.seed}) -> {result.run_dir}")
+    click.echo(f"  data: {len(result.data):,} rows; figures: {len(result.figures)}")
 
 
 @main.command()
-@click.option(
-    "--library",
-    type=click.Choice(["matplotlib", "plotly"]),
-    default="matplotlib",
-    help="Visualization library to use",
-)
-@click.option(
-    "--export-type",
-    type=click.Choice(["image", "html"]),
-    default="image",
-    help="Export format",
-)
-@click.option("--save/--no-save", default=True, help="Save generated data")
-@click.option("--filename", help="Custom output filename")
+@click.argument("run_dir", type=click.Path(exists=True, file_okay=False))
 @handle_error
-def dice(
-    library: str, export_type: str, save: bool, filename: Optional[str]
+def verify(run_dir: str) -> None:
+    """Regenerate a run from its manifest and check it is bit-identical."""
+    from pcc_vizforge.experiments import verify_run
+
+    report = verify_run(run_dir)
+    tampered = [k for k, ok in report["integrity"].items() if not ok]
+    status = click.style("REPRODUCED", fg="green") if report["reproduced"] else click.style("MISMATCH", fg="red")
+    click.echo(f"{report['domain']} run {report['run_id']} (seed {report['seed']}): {status}")
+    if tampered:
+        click.echo(click.style(f"  modified or missing files: {', '.join(tampered)}", fg="yellow"))
+    if not report["reproduced"] or tampered:
+        raise SystemExit(1)
+
+
+@main.command()
+@click.argument("study", type=click.Choice(["all", "b_value", "msd_exponent", "power_law", "dice_gof", "trend_hac"]))
+@click.option("--replicates", default=200, show_default=True, type=click.IntRange(min=2))
+@click.option("--seed", default=20240101, show_default=True, type=click.IntRange(min=0))
+@click.option("--out", "output_dir", type=click.Path(file_okay=False), help="Write CSV/JSON results here.")
+@handle_error
+def validate(study: str, replicates: int, seed: int, output_dir: str | None) -> None:
+    """Monte Carlo validation of estimators (bias, RMSE, CI coverage, test size)."""
+    from pcc_vizforge.experiments.validation import STUDIES, run_study, study_to_dict
+
+    names = sorted(STUDIES) if study == "all" else [study]
+    for name in names:
+        result = run_study(name, n_replicates=replicates, seed=seed)
+        click.echo(click.style(f"\n{name}: {result.description}", bold=True))
+        click.echo(result.summary.to_string(index=False, float_format=lambda v: f"{v:.4g}"))
+        if output_dir:
+            out = Path(output_dir)
+            out.mkdir(parents=True, exist_ok=True)
+            result.replicates.to_csv(out / f"{name}_replicates.csv", index=False)
+            result.summary.to_csv(out / f"{name}_summary.csv", index=False)
+            (out / f"{name}.json").write_text(json.dumps(study_to_dict(result), indent=2, default=str) + "\n")
+
+
+# --------------------------------------------------------------------------- #
+# Dashboards
+# --------------------------------------------------------------------------- #
+def _render_dashboard(
+    domain: str,
+    library: str,
+    export_type: str,
+    save: bool,
+    filename: str | None,
+    seed: int | None = None,
+    overrides: tuple[str, ...] = (),
 ) -> None:
-    """Generate dice simulation visualization."""
-    click.echo("Generating dice simulation data...")
-    logger.info("Starting dice generation")
+    from pcc_vizforge import plots
+    from pcc_vizforge.experiments import DOMAINS
 
-    try:
-        generator = DiceGenerator()
-        data = generator.generate(save_to_file=save)
-
-        if library == "matplotlib":
-            plotter = DiceMatplotlibPlot()
-            fig = plotter.plot(data)
-
-            if export_type == "image":
-                output_path = plotter.save(fig, filename)
-                click.echo(f"✓ Saved matplotlib plot to: {output_path}")
-                logger.info(f"Saved dice plot to: {output_path}")
-
-        elif library == "plotly":
-            from pcc_vizforge.plots.dice_plotly import DicePlotlyPlot
-
-            plotter = DicePlotlyPlot()
-            fig = plotter.plot(data)
-
-            if export_type == "html":
-                output_path = plotter.save(fig, filename)
-                click.echo(f"✓ Saved plotly plot to: {output_path}")
-                logger.info(f"Saved dice HTML to: {output_path}")
-            else:
-                output_path = plotter.save_image(fig, filename)
-                click.echo(f"✓ Saved plotly image to: {output_path}")
-                logger.info(f"Saved dice image to: {output_path}")
-
-        click.echo(f"Generated {len(data)} data points for dice simulation")
-        logger.info("Dice generation completed successfully")
-
-    except Exception as e:
-        logger.error(f"Failed to generate dice visualization: {e}")
-        raise
-
-
-@main.command()
-@click.option(
-    "--library",
-    type=click.Choice(["matplotlib", "plotly"]),
-    default="matplotlib",
-    help="Visualization library to use",
-)
-@click.option(
-    "--export-type",
-    type=click.Choice(["image", "html"]),
-    default="image",
-    help="Export format",
-)
-@click.option("--save/--no-save", default=True, help="Save generated data")
-@click.option("--filename", help="Custom output filename")
-@handle_error
-def weather(
-    library: str, export_type: str, save: bool, filename: Optional[str]
-) -> None:
-    """Generate weather data visualization."""
-    click.echo("Generating weather data...")
-    logger.info("Starting weather generation")
-
-    try:
-        generator = WeatherGenerator()
-        data = generator.generate(save_to_file=save)
-
-        if library == "matplotlib":
-            plotter = WeatherMatplotlibPlot()
-            fig = plotter.plot(data)
-
-            if export_type == "image":
-                output_path = plotter.save(fig, filename)
-                click.echo(f"✓ Saved matplotlib plot to: {output_path}")
-                logger.info(f"Saved weather plot to: {output_path}")
-
-        elif library == "plotly":
-            from pcc_vizforge.plots.weather_plotly import WeatherPlotlyPlot
-
-            plotter = WeatherPlotlyPlot()
-            fig = plotter.plot(data)
-
-            if export_type == "html":
-                output_path = plotter.save(fig, filename)
-                click.echo(f"✓ Saved plotly plot to: {output_path}")
-                logger.info(f"Saved weather HTML to: {output_path}")
-            else:
-                output_path = plotter.save_image(fig, filename)
-                click.echo(f"✓ Saved plotly image to: {output_path}")
-                logger.info(f"Saved weather image to: {output_path}")
-
-        click.echo(f"Generated {len(data)} days of weather data")
-        logger.info("Weather generation completed successfully")
-
-    except Exception as e:
-        logger.error(f"Failed to generate weather visualization: {e}")
-        raise
-
-
-@main.command()
-@click.option(
-    "--library",
-    type=click.Choice(["matplotlib", "plotly"]),
-    default="matplotlib",
-    help="Visualization library to use",
-)
-@click.option(
-    "--export-type",
-    type=click.Choice(["image", "html"]),
-    default="image",
-    help="Export format",
-)
-@click.option("--save/--no-save", default=True, help="Save generated data")
-@click.option("--filename", help="Custom output filename")
-@handle_error
-def quakes(
-    library: str, export_type: str, save: bool, filename: Optional[str]
-) -> None:
-    """Generate earthquake data visualization."""
-    click.echo("Generating earthquake data...")
-    logger.info("Starting earthquake generation")
-
-    try:
-        generator = EarthquakeGenerator()
-        data = generator.generate(save_to_file=save)
-
-        if library == "matplotlib":
-            plotter = EarthquakeMatplotlibPlot()
-            fig = plotter.plot(data)
-
-            if export_type == "image":
-                output_path = plotter.save(fig, filename)
-                click.echo(f"✓ Saved matplotlib plot to: {output_path}")
-                logger.info(f"Saved earthquake plot to: {output_path}")
-
-        elif library == "plotly":
-            from pcc_vizforge.plots.quakes_plotly import EarthquakePlotlyPlot
-
-            plotter = EarthquakePlotlyPlot()
-            fig = plotter.plot(data)
-
-            if export_type == "html":
-                output_path = plotter.save(fig, filename)
-                click.echo(f"✓ Saved plotly plot to: {output_path}")
-                logger.info(f"Saved earthquake HTML to: {output_path}")
-            else:
-                output_path = plotter.save_image(fig, filename)
-                click.echo(f"✓ Saved plotly image to: {output_path}")
-                logger.info(f"Saved earthquake image to: {output_path}")
-
-        click.echo(f"Generated {len(data)} earthquake data points")
-        logger.info("Earthquake generation completed successfully")
-
-    except Exception as e:
-        logger.error(f"Failed to generate earthquake visualization: {e}")
-        raise
-
-
-@main.command()
-@click.option(
-    "--library",
-    type=click.Choice(["matplotlib", "plotly"]),
-    default="matplotlib",
-    help="Visualization library to use",
-)
-@click.option(
-    "--export-type",
-    type=click.Choice(["image", "html"]),
-    default="image",
-    help="Export format",
-)
-@click.option("--save/--no-save", default=True, help="Save generated data")
-@click.option("--filename", help="Custom output filename")
-@handle_error
-def github(
-    library: str, export_type: str, save: bool, filename: Optional[str]
-) -> None:
-    """Generate GitHub statistics visualization."""
-    click.echo("Generating GitHub statistics...")
-    logger.info("Starting GitHub generation")
-
-    try:
-        generator = GitHubGenerator()
-        data = generator.generate(save_to_file=save)
-
-        if library == "matplotlib":
-            plotter = GitHubMatplotlibPlot()
-            fig = plotter.plot(data)
-
-            if export_type == "image":
-                output_path = plotter.save(fig, filename)
-                click.echo(f"✓ Saved matplotlib plot to: {output_path}")
-                logger.info(f"Saved GitHub plot to: {output_path}")
-
-        elif library == "plotly":
-            from pcc_vizforge.plots.github_plotly import GitHubPlotlyPlot
-
-            plotter = GitHubPlotlyPlot()
-            fig = plotter.plot(data)
-
-            if export_type == "html":
-                output_path = plotter.save(fig, filename)
-                click.echo(f"✓ Saved plotly plot to: {output_path}")
-                logger.info(f"Saved GitHub HTML to: {output_path}")
-            else:
-                output_path = plotter.save_image(fig, filename)
-                click.echo(f"✓ Saved plotly image to: {output_path}")
-                logger.info(f"Saved GitHub image to: {output_path}")
-
-        click.echo(f"Generated {len(data)} repository data points")
-        logger.info("GitHub generation completed successfully")
-
-    except Exception as e:
-        logger.error(f"Failed to generate GitHub visualization: {e}")
-        raise
-
-
-@main.command()
-@handle_error
-def list_configs() -> None:
-    """List available configuration files."""
-    click.echo("Available configurations:")
-    configs = list_available_configs()
-
-    if configs:
-        for config in configs:
-            click.echo(f"  • {config}")
-        logger.info(f"Listed {len(configs)} configuration files")
+    gen = DOMAINS[domain](overrides=overrides)
+    data = gen.generate(save_to_file=save, seed=seed)
+    mpl_name, plotly_name = DASHBOARD_CLASSES[domain]
+    if library == "matplotlib":
+        if export_type == "html":
+            raise click.UsageError("HTML export requires --library plotly")
+        plotter = getattr(plots, mpl_name)()
+        path = plotter.save(plotter.plot(data), filename)
     else:
-        click.echo("  (No configuration files found)")
-        logger.warning("No configuration files found in config/ directory")
+        plotter = getattr(plots, plotly_name)()
+        fig = plotter.plot(data)
+        path = plotter.save(fig, filename) if export_type == "html" else plotter.save_image(fig, filename)
+    click.echo(f"✓ {domain}: {len(data):,} rows (seed {gen.last_seed}) -> {path}")
+
+
+dashboard_options = [
+    click.option("--library", type=click.Choice(["matplotlib", "plotly"]), default="matplotlib", show_default=True),
+    click.option("--export-type", type=click.Choice(["image", "html"]), default="image", show_default=True),
+    click.option("--save/--no-save", default=False, show_default=True, help="Also save the generated data as CSV."),
+    click.option("--filename", help="Output file name."),
+]
+
+
+def _with_options(options: list[Callable[[F], F]]) -> Callable[[F], F]:
+    def decorate(func: F) -> F:
+        for option in reversed(options):
+            func = option(func)
+        return func
+
+    return decorate
 
 
 @main.command()
-@click.argument("config_name")
+@domain_argument
+@_with_options(dashboard_options)
+@seed_option
+@set_option
 @handle_error
-def show_config(config_name: str) -> None:
-    """Show configuration file contents.
+def dashboard(
+    domain: str,
+    library: str,
+    export_type: str,
+    save: bool,
+    filename: str | None,
+    seed: int | None,
+    overrides: tuple[str, ...],
+) -> None:
+    """Render the overview dashboard for DOMAIN."""
+    _render_dashboard(domain, library, export_type, save, filename, seed, overrides)
 
-    Args:
-        config_name: Name of the configuration file to display
-    """
-    logger.info(f"Displaying configuration: {config_name}")
 
-    try:
-        config = load_config(config_name)
-        click.echo(f"\nConfiguration: {config_name}")
-        click.echo("-" * 60)
-        click.echo(yaml.dump(config, default_flow_style=False, indent=2))
-        logger.debug("Configuration displayed successfully")
-    except Exception as e:
-        click.echo(click.style(f"Error: {e}", fg="red"), err=True)
-        logger.error(f"Failed to load configuration {config_name}: {e}")
-        raise
+def _legacy_command(domain: str, name: str, hidden: bool) -> None:
+    """Register a per-domain alias of ``dashboard`` (kept for backwards compatibility)."""
+
+    @main.command(name=name, hidden=hidden, help=f"Render the {domain} dashboard (alias of `dashboard {domain}`).")
+    @_with_options(dashboard_options)
+    @handle_error
+    def command(library: str, export_type: str, save: bool, filename: str | None) -> None:
+        _render_dashboard(domain, library, export_type, save, filename)
+
+
+for _domain in DOMAIN_NAMES:
+    _legacy_command(_domain, _domain.replace("_", "-"), hidden=False)
+    if "_" in _domain:
+        _legacy_command(_domain, _domain, hidden=True)
 
 
 @main.command()
-@click.option(
-    "--library",
-    type=click.Choice(["matplotlib", "plotly"]),
-    default="matplotlib",
-    help="Visualization library to use for all demos",
-)
+@click.option("--library", type=click.Choice(["matplotlib", "plotly"]), default="matplotlib", show_default=True)
 @handle_error
 def demo(library: str) -> None:
-    """Run a quick demo generating all visualizations.
+    """Render every dashboard with default settings."""
+    export = "image"
+    for domain in DOMAIN_NAMES:
+        _render_dashboard(domain, library, export, save=False, filename=None)
 
-    Args:
-        library: Visualization library to use for all demos
-    """
-    click.echo("Running PCC VizForge demo...\n")
-    logger.info(f"Starting demo with {library}")
 
-    demos = [
-        ("random_walk", library, "image"),
-        ("dice", library, "image"),
-        ("weather", library, "image"),
-        ("quakes", library, "image"),
-        ("github", library, "image"),
-    ]
+# --------------------------------------------------------------------------- #
+# Configuration helpers
+# --------------------------------------------------------------------------- #
+@main.command("list-configs")
+def list_configs() -> None:
+    """List bundled configuration files."""
+    for name in list_available_configs():
+        click.echo(name)
 
-    success_count = 0
-    failed_count = 0
 
-    for data_type, lib, export in demos:
-        try:
-            click.echo(f"→ Generating {data_type} with {lib}...", nl=False)
-            click.flush()
-
-            if data_type == "random_walk":
-                generator = RandomWalkGenerator()
-                data = generator.generate(save_to_file=True)
-            elif data_type == "dice":
-                generator = DiceGenerator()
-                data = generator.generate(save_to_file=True)
-            elif data_type == "weather":
-                generator = WeatherGenerator()
-                data = generator.generate(save_to_file=True)
-            elif data_type == "quakes":
-                generator = EarthquakeGenerator()
-                data = generator.generate(save_to_file=True)
-            elif data_type == "github":
-                generator = GitHubGenerator()
-                data = generator.generate(save_to_file=True)
-
-            click.echo(f" ✓ ({len(data)} points)\n")
-            success_count += 1
-            logger.info(f"Demo: {data_type} generated successfully")
-
-        except Exception as e:
-            click.echo(f" ✗ ({str(e)[:30]}...)\n")
-            failed_count += 1
-            logger.error(f"Demo: {data_type} failed: {e}")
-
-    click.echo("-" * 60)
-    click.echo(
-        f"Demo completed: {success_count} successful, {failed_count} failed"
-    )
-    logger.info(
-        f"Demo completed: {success_count} successful, {failed_count} failed"
-    )
-
-    if failed_count == 0:
-        click.echo(click.style("All demos completed successfully!", fg="green"))
-    else:
-        click.echo(
-            click.style(
-                f"{failed_count} demo(s) failed. Check logs for details.",
-                fg="yellow",
-            )
-        )
+@main.command("show-config")
+@click.argument("config_name")
+@set_option
+@handle_error
+def show_config(config_name: str, overrides: tuple[str, ...]) -> None:
+    """Print a configuration (after applying any --set overrides)."""
+    config = apply_overrides(load_config(config_name), overrides)
+    click.echo(yaml.safe_dump(config, sort_keys=False))
 
 
 @main.command()
 def version() -> None:
     """Show version information."""
-    from pcc_vizforge import __version__ as version_str
-
-    click.echo(f"PCC-VizForge version: {version_str}")
+    click.echo(f"PCC-VizForge version: {__version__}")
 
 
 if __name__ == "__main__":

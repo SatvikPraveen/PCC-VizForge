@@ -154,7 +154,14 @@ def gutenberg_richter_figure(
         return fig
 
 
-def omori_figure(times: ArrayLike, fit: OmoriFit | None = None, *, n_bins: int = 30, ax: Axes | None = None) -> Figure:
+def omori_figure(
+    times: ArrayLike,
+    fit: OmoriFit | None = None,
+    *,
+    n_bins: int = 30,
+    time_unit: str = "days",
+    ax: Axes | None = None,
+) -> Figure:
     """Aftershock rate in log-spaced bins with the fitted Omori-Utsu law."""
     with publication_style():
         fig, ax = _axes(ax)
@@ -166,15 +173,21 @@ def omori_figure(times: ArrayLike, fit: OmoriFit | None = None, *, n_bins: int =
         mids = np.sqrt(edges[:-1] * edges[1:])
         keep = counts > 0
         rate = counts / widths
-        err = np.sqrt(counts) / widths
-        ax.errorbar(mids[keep], rate[keep], yerr=err[keep], fmt="o", color=series_color(0), ecolor=TEXT2, markersize=5, elinewidth=1, label="Observed rate ± √N")
+        # Exact (Garwood) 68 % Poisson intervals stay positive on a log axis.
+        lo = stats.chi2.ppf(0.16, 2 * counts) / 2
+        hi = stats.chi2.ppf(0.84, 2 * counts + 2) / 2
+        yerr = np.vstack([(counts - lo) / widths, (hi - counts) / widths])
+        ax.errorbar(
+            mids[keep], rate[keep], yerr=yerr[:, keep], fmt="o", color=series_color(0),
+            ecolor=TEXT2, markersize=5, elinewidth=1, label="Observed rate (Poisson 68% CI)",
+        )
         if fit is not None:
             xs = np.geomspace(t.min(), t.max(), 100)
             ax.plot(xs, fit.rate(xs), color=series_color(1), label=f"Omori-Utsu: p = {fit.p:.2f} ± {fit.p_stderr:.2f}, c = {fit.c:.3g}")
         ax.set_xscale("log")
         ax.set_yscale("log")
-        ax.set_xlabel("Time since mainshock")
-        ax.set_ylabel("Events per unit time")
+        ax.set_xlabel(f"Time since parent event ({time_unit})")
+        ax.set_ylabel(f"Events per {time_unit.rstrip('s')}")
         ax.set_title("Aftershock decay")
         ax.legend()
         return fig
