@@ -34,7 +34,9 @@ def resolve_seed(seed: int | np.integer | None) -> int:
     if seed is None:
         return secrets.randbits(63)
     if isinstance(seed, bool) or not isinstance(seed, (int, np.integer)):
-        raise InvalidParameterError(f"Seed must be a non-negative integer, got {seed!r}")
+        raise InvalidParameterError(
+            f"Seed must be a non-negative integer, got {seed!r}"
+        )
     if seed < 0:
         raise InvalidParameterError(f"Seed must be non-negative, got {seed}")
     return int(seed)

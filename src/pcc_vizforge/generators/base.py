@@ -112,11 +112,17 @@ class BaseGenerator(ABC, Generic[P]):
             overrides: ``key.path=value`` strings applied on top.
             **params: Direct overrides of ``data_generation`` parameters.
         """
-        base = dict(config) if config is not None else load_config(config_name or self.domain)
+        base = (
+            dict(config)
+            if config is not None
+            else load_config(config_name or self.domain)
+        )
         base = apply_overrides(base, overrides)
         if params:
             base = deep_merge(base, {"data_generation": params})
-        if "data_generation" not in base or not isinstance(base["data_generation"], dict):
+        if "data_generation" not in base or not isinstance(
+            base["data_generation"], dict
+        ):
             raise InvalidConfigurationError(
                 f"{type(self).__name__} config needs a 'data_generation' mapping"
             )
@@ -133,7 +139,9 @@ class BaseGenerator(ABC, Generic[P]):
         try:
             return self.params_cls.from_mapping(self.data_config)  # type: ignore[return-value]
         except (TypeError, ValueError) as exc:
-            raise InvalidParameterError(f"Invalid {self.domain} parameters: {exc}") from exc
+            raise InvalidParameterError(
+                f"Invalid {self.domain} parameters: {exc}"
+            ) from exc
 
     def generate(
         self,
@@ -172,7 +180,9 @@ class BaseGenerator(ABC, Generic[P]):
         except (InvalidParameterError, DataGenerationError):
             raise
         except Exception as exc:  # pragma: no cover - defensive
-            raise DataGenerationError(f"{self.domain} generation failed: {exc}") from exc
+            raise DataGenerationError(
+                f"{self.domain} generation failed: {exc}"
+            ) from exc
 
         df.attrs["provenance"] = {
             "domain": self.domain,

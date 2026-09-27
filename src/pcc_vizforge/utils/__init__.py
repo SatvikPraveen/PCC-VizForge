@@ -7,7 +7,12 @@ from typing import Any
 
 from .io import ensure_directory_exists, load_config, load_data, save_data
 
-_LAZY_THEMING = ("apply_style", "get_color_palette", "get_matplotlib_style", "get_plotly_template")
+_LAZY_THEMING = (
+    "apply_style",
+    "get_color_palette",
+    "get_matplotlib_style",
+    "get_plotly_template",
+)
 
 __all__ = [
     "apply_style",

@@ -68,7 +68,9 @@ def setup_logging(
     """
     level = level.upper()
     if level not in VALID_LEVELS:
-        raise ValueError(f"Invalid logging level: {level}. Must be one of {sorted(VALID_LEVELS)}")
+        raise ValueError(
+            f"Invalid logging level: {level}. Must be one of {sorted(VALID_LEVELS)}"
+        )
 
     log_config = copy.deepcopy(config if config is not None else LOGGING_CONFIG)
     if config is None:

@@ -4,7 +4,7 @@ import json
 import logging
 import pickle
 from pathlib import Path
-from typing import Any, List, Union
+from typing import Any
 
 import pandas as pd
 import yaml
@@ -67,7 +67,9 @@ def load_config(config_name: str | Path) -> dict[str, Any]:
             config = yaml.safe_load(f)
     except yaml.YAMLError as e:
         logger.error(f"Error parsing config file {config_path}: {e}")
-        raise InvalidConfigurationError(f"Error parsing config file {config_path}: {e}") from e
+        raise InvalidConfigurationError(
+            f"Error parsing config file {config_path}: {e}"
+        ) from e
 
     if config is None:
         logger.error(f"Configuration file is empty: {config_path}")
@@ -81,7 +83,7 @@ def load_config(config_name: str | Path) -> dict[str, Any]:
     return config
 
 
-def ensure_directory_exists(file_path: Union[str, Path]) -> None:
+def ensure_directory_exists(file_path: str | Path) -> None:
     """Ensure that the directory for a file path exists.
 
     Args:
@@ -96,12 +98,10 @@ def ensure_directory_exists(file_path: Union[str, Path]) -> None:
         logger.debug(f"Directory ensured: {path.parent}")
     except OSError as e:
         logger.error(f"Failed to create directory for {file_path}: {e}")
-        raise PccIOError(f"Failed to create directory for {file_path}: {e}")
+        raise PccIOError(f"Failed to create directory for {file_path}: {e}") from e
 
 
-def save_data(
-    data: Any, file_path: Union[str, Path], format_type: str = "auto"
-) -> None:
+def save_data(data: Any, file_path: str | Path, format_type: str = "auto") -> None:
     """Save data to file in specified format.
 
     Args:
@@ -139,16 +139,15 @@ def save_data(
 
         else:
             raise ValidationError(
-                f"Unsupported format: {format_type}. "
-                f"Supported: csv, json, pickle"
+                f"Unsupported format: {format_type}. Supported: csv, json, pickle"
             )
 
     except Exception as e:
         logger.error(f"Failed to save data to {file_path}: {e}")
-        raise ExportError(f"Failed to save data to {file_path}: {e}")
+        raise ExportError(f"Failed to save data to {file_path}: {e}") from e
 
 
-def load_data(file_path: Union[str, Path], format_type: str = "auto") -> Any:
+def load_data(file_path: str | Path, format_type: str = "auto") -> Any:
     """Load data from file.
 
     Args:
@@ -178,7 +177,7 @@ def load_data(file_path: Union[str, Path], format_type: str = "auto") -> Any:
             logger.debug(f"Loaded CSV data from {file_path}")
 
         elif format_type == "json":
-            with open(file_path, "r", encoding="utf-8") as f:
+            with open(file_path, encoding="utf-8") as f:
                 data = json.load(f)
             logger.debug(f"Loaded JSON data from {file_path}")
 
@@ -189,15 +188,14 @@ def load_data(file_path: Union[str, Path], format_type: str = "auto") -> Any:
 
         else:
             raise ValidationError(
-                f"Unsupported format: {format_type}. "
-                f"Supported: csv, json, pickle"
+                f"Unsupported format: {format_type}. Supported: csv, json, pickle"
             )
 
         return data
 
     except (json.JSONDecodeError, pickle.UnpicklingError) as e:
         logger.error(f"Failed to parse data file {file_path}: {e}")
-        raise PccIOError(f"Failed to parse data file {file_path}: {e}")
+        raise PccIOError(f"Failed to parse data file {file_path}: {e}") from e
 
 
 def get_data_directory(data_type: str) -> Path:
@@ -219,7 +217,7 @@ def get_data_directory(data_type: str) -> Path:
         return data_dir
     except OSError as e:
         logger.error(f"Failed to create data directory {data_dir}: {e}")
-        raise PccIOError(f"Failed to create data directory {data_dir}: {e}")
+        raise PccIOError(f"Failed to create data directory {data_dir}: {e}") from e
 
 
 def get_export_directory(export_type: str) -> Path:
@@ -238,23 +236,20 @@ def get_export_directory(export_type: str) -> Path:
     if export_type not in ["images", "html"]:
         logger.error(f"Invalid export type: {export_type}")
         raise ValidationError(
-            f"Invalid export type: {export_type}. "
-            f"Supported: images, html"
+            f"Invalid export type: {export_type}. Supported: images, html"
         )
 
-    export_dir = (
-        IMAGE_EXPORT_DIR if export_type == "images" else HTML_EXPORT_DIR
-    )
+    export_dir = IMAGE_EXPORT_DIR if export_type == "images" else HTML_EXPORT_DIR
     try:
         export_dir.mkdir(parents=True, exist_ok=True)
         logger.debug(f"Export directory ensured: {export_dir}")
         return export_dir
     except OSError as e:
         logger.error(f"Failed to create export directory {export_dir}: {e}")
-        raise PccIOError(f"Failed to create export directory {export_dir}: {e}")
+        raise PccIOError(f"Failed to create export directory {export_dir}: {e}") from e
 
 
-def list_available_configs() -> List[str]:
+def list_available_configs() -> list[str]:
     """List all available configuration files.
 
     Returns:
@@ -286,4 +281,4 @@ def ensure_logs_directory() -> Path:
         return LOGS_DIR
     except OSError as e:
         logger.error(f"Failed to create logs directory: {e}")
-        raise PccIOError(f"Failed to create logs directory: {e}")
+        raise PccIOError(f"Failed to create logs directory: {e}") from e

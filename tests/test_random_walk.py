@@ -34,7 +34,9 @@ from pcc_vizforge.rng import make_rng
 
 def _positions(**kw):
     p = RandomWalkParams(**kw)
-    return p, np.cumsum(simulate_increments(p, make_rng(kw.get("random_seed", 0))), axis=1)
+    return p, np.cumsum(
+        simulate_increments(p, make_rng(kw.get("random_seed", 0))), axis=1
+    )
 
 
 class TestParams:
@@ -69,7 +71,9 @@ class TestStructure:
     @pytest.mark.parametrize("model", WALK_MODELS)
     @pytest.mark.parametrize("d", [1, 2, 3])
     def test_shapes_and_columns(self, model, d):
-        df = RandomWalkGenerator(n_steps=20, n_walks=3, dimensions=d, model=model).generate()
+        df = RandomWalkGenerator(
+            n_steps=20, n_walks=3, dimensions=d, model=model
+        ).generate()
         assert len(df) == 60
         assert (df["y_position"] == 0).all() if d == 1 else True
         assert ("z_position" in df) == (d == 3)
@@ -77,13 +81,17 @@ class TestStructure:
         assert (df.groupby("walk_id")["path_length"].diff().dropna() >= 0).all()
 
     def test_lattice_steps_are_unit_axis_moves(self):
-        _, pos = _positions(n_steps=200, n_walks=10, dimensions=3, model="lattice", step_size=2.0)
+        _, pos = _positions(
+            n_steps=200, n_walks=10, dimensions=3, model="lattice", step_size=2.0
+        )
         inc = np.diff(pos, axis=1, prepend=0)
         assert np.all(np.count_nonzero(inc, axis=-1) == 1)
         assert np.allclose(np.abs(inc).sum(-1), 2.0)
 
     def test_levy_step_lengths_bounded_below(self):
-        _, pos = _positions(n_steps=500, n_walks=5, dimensions=2, model="levy", step_size=0.5)
+        _, pos = _positions(
+            n_steps=500, n_walks=5, dimensions=2, model="levy", step_size=0.5
+        )
         lengths = np.linalg.norm(np.diff(pos, axis=1, prepend=0), axis=-1)
         assert lengths.min() >= 0.5 - 1e-12
 
@@ -112,9 +120,13 @@ class TestStructure:
     )
     @settings(max_examples=40, deadline=None)
     def test_property_consistency(self, n, w, d, model):
-        df = RandomWalkGenerator(n_steps=n, n_walks=w, dimensions=d, model=model).generate(seed=0)
+        df = RandomWalkGenerator(
+            n_steps=n, n_walks=w, dimensions=d, model=model
+        ).generate(seed=0)
         pos = frame_to_positions(df)
-        np.testing.assert_allclose(np.linalg.norm(pos, axis=-1).ravel(), df["displacement"])
+        np.testing.assert_allclose(
+            np.linalg.norm(pos, axis=-1).ravel(), df["displacement"]
+        )
         # triangle inequality: displacement never exceeds distance travelled
         assert np.all(df["displacement"] <= df["path_length"] + 1e-9)
 
@@ -133,7 +145,9 @@ class TestAgainstTheory:
         ],
     )
     def test_ensemble_msd_matches_theory(self, kw):
-        p, pos = _positions(n_steps=256, n_walks=3000, dimensions=2, step_size=1.5, **kw)
+        p, pos = _positions(
+            n_steps=256, n_walks=3000, dimensions=2, step_size=1.5, **kw
+        )
         msd, sem = ensemble_msd(pos)
         t = np.array([1, 16, 64, 256])
         theo = theoretical_msd(p, t)
@@ -144,7 +158,9 @@ class TestAgainstTheory:
 
     @pytest.mark.parametrize("hurst", [0.2, 0.5, 0.8])
     def test_fbm_exponent_recovered(self, hurst):
-        _, pos = _positions(n_steps=1024, n_walks=500, dimensions=1, model="fbm", hurst=hurst)
+        _, pos = _positions(
+            n_steps=1024, n_walks=500, dimensions=1, model="fbm", hurst=hurst
+        )
         msd, sem = ensemble_msd(pos)
         t = np.arange(1, 1025)
         fit = fit_msd_exponent(t, msd, sigma=sem)
@@ -179,7 +195,11 @@ class TestAgainstTheory:
 
     def test_regime_classification(self):
         t = np.arange(1, 200)
-        for alpha, regime in [(0.5, "subdiffusive"), (1.0, "normal"), (1.6, "superdiffusive")]:
+        for alpha, regime in [
+            (0.5, "subdiffusive"),
+            (1.0, "normal"),
+            (1.6, "superdiffusive"),
+        ]:
             noise = np.exp(make_rng(1).normal(0, 0.01, t.size))
             assert fit_msd_exponent(t, 3 * t**alpha * noise).regime == regime
 

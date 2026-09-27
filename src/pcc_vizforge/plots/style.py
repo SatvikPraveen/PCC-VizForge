@@ -20,12 +20,13 @@ from __future__ import annotations
 
 from collections.abc import Iterator
 from contextlib import contextmanager
-from typing import Any, Literal
+from typing import Any, Literal, cast
 
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 import plotly.graph_objects as go
 import plotly.io as pio
+from cycler import cycler
 from matplotlib.colors import LinearSegmentedColormap
 
 from pcc_vizforge.exceptions import VisualizationError
@@ -83,7 +84,15 @@ SEQUENTIAL_STEPS: tuple[str, ...] = (
     "#104281",
     "#0d366b",
 )
-DIVERGING_STEPS: tuple[str, ...] = ("#0d366b", "#2a78d6", "#9ec5f4", "#f0efec", "#f2a9a8", "#e34948", "#8f1f1e")
+DIVERGING_STEPS: tuple[str, ...] = (
+    "#0d366b",
+    "#2a78d6",
+    "#9ec5f4",
+    "#f0efec",
+    "#f2a9a8",
+    "#e34948",
+    "#8f1f1e",
+)
 
 TOKENS: dict[Theme, dict[str, str]] = {
     "light": {
@@ -128,7 +137,9 @@ def series_color(index: int, theme: Theme = "light") -> str:
     return categorical(index + 1, theme)[index]
 
 
-def plotly_colorscale(kind: Literal["sequential", "diverging"] = "sequential") -> list[list[Any]]:
+def plotly_colorscale(
+    kind: Literal["sequential", "diverging"] = "sequential",
+) -> list[list[Any]]:
     """Plotly ``colorscale`` equivalent of the Matplotlib colormaps."""
     steps = SEQUENTIAL_STEPS if kind == "sequential" else DIVERGING_STEPS
     n = len(steps) - 1
@@ -157,7 +168,9 @@ def matplotlib_rc(theme: Theme = "light") -> dict[str, Any]:
         "axes.spines.right": False,
         "axes.grid": True,
         "axes.axisbelow": True,
-        "axes.prop_cycle": mpl.cycler(color=list(CATEGORICAL if theme == "light" else CATEGORICAL_DARK)),
+        "axes.prop_cycle": cycler(
+            color=list(CATEGORICAL if theme == "light" else CATEGORICAL_DARK)
+        ),
         "grid.color": t["grid"],
         "grid.linewidth": 0.6,
         "xtick.color": t["text_secondary"],
@@ -180,13 +193,13 @@ def matplotlib_rc(theme: Theme = "light") -> dict[str, Any]:
 
 def apply_matplotlib_style(theme: Theme = "light") -> None:
     """Apply the publication style globally."""
-    plt.rcParams.update(matplotlib_rc(theme))
+    plt.rcParams.update(cast(Any, matplotlib_rc(theme)))
 
 
 @contextmanager
 def publication_style(theme: Theme = "light") -> Iterator[None]:
     """Context manager applying the publication style temporarily."""
-    with mpl.rc_context(matplotlib_rc(theme)):
+    with mpl.rc_context(cast(Any, matplotlib_rc(theme))):
         yield
 
 
@@ -207,14 +220,25 @@ def _plotly_template(theme: Theme) -> go.layout.Template:
         layout={
             "paper_bgcolor": t["surface"],
             "plot_bgcolor": t["surface"],
-            "font": {"family": "Inter, system-ui, sans-serif", "size": 12, "color": t["text_primary"]},
+            "font": {
+                "family": "Inter, system-ui, sans-serif",
+                "size": 12,
+                "color": t["text_primary"],
+            },
             "colorway": list(CATEGORICAL if theme == "light" else CATEGORICAL_DARK),
             "xaxis": axis,
             "yaxis": axis,
             "hovermode": "closest",
-            "hoverlabel": {"font": {"color": t["text_primary"]}, "bgcolor": t["surface"], "bordercolor": t["axis"]},
+            "hoverlabel": {
+                "font": {"color": t["text_primary"]},
+                "bgcolor": t["surface"],
+                "bordercolor": t["axis"],
+            },
             "legend": {"orientation": "h", "yanchor": "bottom", "y": 1.02, "x": 0},
-            "colorscale": {"sequential": plotly_colorscale("sequential"), "diverging": plotly_colorscale("diverging")},
+            "colorscale": {
+                "sequential": plotly_colorscale("sequential"),
+                "diverging": plotly_colorscale("diverging"),
+            },
             "title": {"x": 0.0, "xanchor": "left"},
         },
         data={"scatter": [go.Scatter(line={"width": 2})]},

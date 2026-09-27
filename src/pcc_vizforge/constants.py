@@ -61,7 +61,13 @@ DEFAULT_COLOR_PALETTE: Final[str] = "default"
 
 # Supported formats
 SUPPORTED_IMAGE_FORMATS: Final[tuple[str, ...]] = ("png", "jpg", "jpeg", "pdf", "svg")
-SUPPORTED_DATA_FORMATS: Final[tuple[str, ...]] = ("csv", "json", "parquet", "pickle", "pkl")
+SUPPORTED_DATA_FORMATS: Final[tuple[str, ...]] = (
+    "csv",
+    "json",
+    "parquet",
+    "pickle",
+    "pkl",
+)
 SUPPORTED_LIBRARIES: Final[tuple[str, ...]] = ("matplotlib", "plotly")
 SUPPORTED_EXPORT_TYPES: Final[tuple[str, ...]] = ("image", "html")
 

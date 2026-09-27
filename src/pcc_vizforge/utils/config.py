@@ -38,7 +38,9 @@ def parse_override(expr: str) -> tuple[list[str], Any]:
     ``[1, 2]`` and ``{a: 1}`` all become the corresponding Python objects.
     """
     if "=" not in expr:
-        raise InvalidConfigurationError(f"Override must look like key.path=value, got {expr!r}")
+        raise InvalidConfigurationError(
+            f"Override must look like key.path=value, got {expr!r}"
+        )
     key, raw = expr.split("=", 1)
     path = [part for part in key.strip().split(".") if part]
     if not path:
@@ -46,7 +48,9 @@ def parse_override(expr: str) -> tuple[list[str], Any]:
     try:
         value = yaml.safe_load(raw) if raw.strip() else None
     except yaml.YAMLError as exc:
-        raise InvalidConfigurationError(f"Cannot parse value in override {expr!r}: {exc}") from exc
+        raise InvalidConfigurationError(
+            f"Cannot parse value in override {expr!r}: {exc}"
+        ) from exc
     return path, value
 
 
@@ -65,7 +69,9 @@ def set_by_path(config: dict[str, Any], path: list[str], value: Any) -> None:
     node[path[-1]] = value
 
 
-def apply_overrides(config: Mapping[str, Any], overrides: Iterable[str]) -> dict[str, Any]:
+def apply_overrides(
+    config: Mapping[str, Any], overrides: Iterable[str]
+) -> dict[str, Any]:
     """Return a copy of ``config`` with each ``key.path=value`` override applied."""
     result = copy.deepcopy(dict(config))
     for expr in overrides:

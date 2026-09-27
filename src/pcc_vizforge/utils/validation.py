@@ -1,7 +1,7 @@
 """Input validation utilities for PCC-VizForge."""
 
 import logging
-from typing import Any, Dict, Optional
+from typing import Any
 
 from pcc_vizforge.constants import (
     MAX_DATA_POINTS,
@@ -13,9 +13,7 @@ from pcc_vizforge.exceptions import InvalidParameterError
 logger = logging.getLogger(__name__)
 
 
-def validate_positive_int(
-    value: Any, param_name: str, min_val: int = 1
-) -> int:
+def validate_positive_int(value: Any, param_name: str, min_val: int = 1) -> int:
     """Validate that a value is a positive integer.
 
     Args:
@@ -38,12 +36,10 @@ def validate_positive_int(
         logger.error(f"Invalid {param_name}: {value}. {e}")
         raise InvalidParameterError(
             f"Invalid {param_name}: {value}. Must be integer >= {min_val}"
-        )
+        ) from e
 
 
-def validate_positive_float(
-    value: Any, param_name: str, min_val: float = 0.0
-) -> float:
+def validate_positive_float(value: Any, param_name: str, min_val: float = 0.0) -> float:
     """Validate that a value is a positive float.
 
     Args:
@@ -66,7 +62,7 @@ def validate_positive_float(
         logger.error(f"Invalid {param_name}: {value}. {e}")
         raise InvalidParameterError(
             f"Invalid {param_name}: {value}. Must be float >= {min_val}"
-        )
+        ) from e
 
 
 def validate_data_size(n_points: int, param_name: str = "n_points") -> int:
@@ -85,9 +81,7 @@ def validate_data_size(n_points: int, param_name: str = "n_points") -> int:
     validated = validate_positive_int(n_points, param_name, min_val=MIN_DATA_POINTS)
 
     if validated > MAX_DATA_POINTS:
-        logger.error(
-            f"Data size {validated} exceeds maximum {MAX_DATA_POINTS}"
-        )
+        logger.error(f"Data size {validated} exceeds maximum {MAX_DATA_POINTS}")
         raise InvalidParameterError(
             f"Data size {validated} exceeds maximum {MAX_DATA_POINTS}"
         )
@@ -110,19 +104,15 @@ def validate_dimensions(dimensions: int, param_name: str = "dimensions") -> int:
     """
     if dimensions not in VALID_DIMENSIONS:
         logger.error(
-            f"Invalid {param_name}: {dimensions}. "
-            f"Valid options: {VALID_DIMENSIONS}"
+            f"Invalid {param_name}: {dimensions}. Valid options: {VALID_DIMENSIONS}"
         )
         raise InvalidParameterError(
-            f"Invalid {param_name}: {dimensions}. "
-            f"Valid options: {VALID_DIMENSIONS}"
+            f"Invalid {param_name}: {dimensions}. Valid options: {VALID_DIMENSIONS}"
         )
     return dimensions
 
 
-def validate_config_structure(
-    config: Dict[str, Any], required_keys: list[str]
-) -> None:
+def validate_config_structure(config: dict[str, Any], required_keys: list[str]) -> None:
     """Validate that a config dictionary has required keys.
 
     Args:
@@ -135,15 +125,13 @@ def validate_config_structure(
     missing_keys = [key for key in required_keys if key not in config]
 
     if missing_keys:
-        logger.error(
-            f"Configuration missing required keys: {missing_keys}"
-        )
+        logger.error(f"Configuration missing required keys: {missing_keys}")
         raise InvalidParameterError(
             f"Configuration missing required keys: {missing_keys}"
         )
 
 
-def validate_seed(seed: Optional[int]) -> Optional[int]:
+def validate_seed(seed: int | None) -> int | None:
     """Validate random seed value.
 
     Args:
@@ -167,4 +155,4 @@ def validate_seed(seed: Optional[int]) -> Optional[int]:
         logger.error(f"Invalid random seed: {seed}. {e}")
         raise InvalidParameterError(
             f"Invalid random seed: {seed}. Must be non-negative integer"
-        )
+        ) from e

@@ -37,8 +37,14 @@ class DiceParams(GeneratorParams):
         super().validate()
         for name in ("n_rolls", "n_dice", "dice_sides"):
             value = getattr(self, name)
-            if isinstance(value, bool) or not isinstance(value, (int, np.integer)) or value < 1:
-                raise InvalidParameterError(f"{name} must be a positive integer, got {value!r}")
+            if (
+                isinstance(value, bool)
+                or not isinstance(value, (int, np.integer))
+                or value < 1
+            ):
+                raise InvalidParameterError(
+                    f"{name} must be a positive integer, got {value!r}"
+                )
         if self.dice_sides < 2:
             raise InvalidParameterError("dice_sides must be >= 2")
         if self.n_rolls * self.n_dice > MAX_DATA_POINTS:
@@ -68,9 +74,13 @@ class DiceGenerator(BaseGenerator[DiceParams]):
         if params.weights is None:
             values = rng.integers(1, s + 1, size=(r, n))
         else:
-            values = rng.choice(np.arange(1, s + 1), size=(r, n), p=face_pmf(s, params.weights))
+            values = rng.choice(
+                np.arange(1, s + 1), size=(r, n), p=face_pmf(s, params.weights)
+            )
         sums = values.sum(axis=1)
-        all_equal = (values == values[:, :1]).all(axis=1) if n > 1 else np.zeros(r, dtype=bool)
+        all_equal = (
+            (values == values[:, :1]).all(axis=1) if n > 1 else np.zeros(r, dtype=bool)
+        )
         roll_ids = np.arange(r)
 
         df = pd.DataFrame(
@@ -132,7 +142,9 @@ class DiceGenerator(BaseGenerator[DiceParams]):
             "expected_sum_mean": p.n_dice * mean,
             "expected_sum_variance": p.n_dice * var,
             "observed_sum_mean": float(sums.mean()),
-            "observed_sum_variance": float(sums.var(ddof=1)) if len(sums) > 1 else float("nan"),
+            "observed_sum_variance": float(sums.var(ddof=1))
+            if len(sums) > 1
+            else float("nan"),
             "chi_square_statistic": sum_test.statistic,
             "sum_gof": sum_test.to_dict(),
             "face_gof": face_test.to_dict(),
@@ -141,8 +153,12 @@ class DiceGenerator(BaseGenerator[DiceParams]):
     def fairness_test(self, data: pd.DataFrame) -> dict[str, Any]:
         """Chi-square test of the null hypothesis that every face is equally likely."""
         s = self.params.dice_sides
-        counts = data["die_value"].value_counts().reindex(np.arange(1, s + 1), fill_value=0)
-        return chi_square_gof(counts.to_numpy(), np.full(s, 1.0 / s), pool=False).to_dict()
+        counts = (
+            data["die_value"].value_counts().reindex(np.arange(1, s + 1), fill_value=0)
+        )
+        return chi_square_gof(
+            counts.to_numpy(), np.full(s, 1.0 / s), pool=False
+        ).to_dict()
 
     def generate_streak_analysis(self, data: pd.DataFrame) -> dict[str, Any]:
         """Streaks of identical sums, monotone runs, and a runs test for randomness."""

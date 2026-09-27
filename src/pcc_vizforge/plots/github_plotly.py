@@ -1,6 +1,5 @@
 """Plotly plotting for GitHub data."""
 
-
 import pandas as pd
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
@@ -20,15 +19,18 @@ class GitHubPlotlyPlot:
     def plot(self, data: pd.DataFrame) -> go.Figure:
         """Create interactive GitHub visualization."""
         fig = make_subplots(
-            rows=2, cols=2,
+            rows=2,
+            cols=2,
             subplot_titles=(
                 "Stars vs Forks (Repository Popularity)",
                 "Programming Language Distribution",
                 "Activity Score Distribution",
-                "Repository Age vs Popularity"
+                "Repository Age vs Popularity",
             ),
-            specs=[[{"type": "scatter"}, {"type": "bar"}],
-                   [{"type": "histogram"}, {"type": "scatter"}]]
+            specs=[
+                [{"type": "scatter"}, {"type": "bar"}],
+                [{"type": "histogram"}, {"type": "scatter"}],
+            ],
         )
 
         colors = self.viz_config["color_discrete_sequence"]
@@ -38,27 +40,30 @@ class GitHubPlotlyPlot:
             go.Scatter(
                 x=data["stars"],
                 y=data["forks"],
-                mode='markers',
+                mode="markers",
                 marker=dict(
                     color=data["popularity_score"],
                     colorscale=plotly_colorscale("sequential"),
                     size=data["contributors"] * 2,
                     sizemin=4,
                     opacity=0.7,
-                    colorbar=dict(title="Popularity Score")
+                    colorbar=dict(title="Popularity Score"),
                 ),
                 text=data.apply(
-                    lambda x: f"<b>{x['repo_name']}</b><br>"
-                             f"Language: {x['primary_language']}<br>"
-                             f"Type: {x['repo_type']}<br>"
-                             f"Contributors: {x['contributors']}<br>"
-                             f"Age: {x['repo_age_days']} days",
-                    axis=1
+                    lambda x: (
+                        f"<b>{x['repo_name']}</b><br>"
+                        f"Language: {x['primary_language']}<br>"
+                        f"Type: {x['repo_type']}<br>"
+                        f"Contributors: {x['contributors']}<br>"
+                        f"Age: {x['repo_age_days']} days"
+                    ),
+                    axis=1,
                 ),
                 hovertemplate="%{text}<br>Stars: %{x}<br>Forks: %{y}<extra></extra>",
-                name="Repositories"
+                name="Repositories",
             ),
-            row=1, col=1
+            row=1,
+            col=1,
         )
 
         # Language distribution
@@ -67,11 +72,12 @@ class GitHubPlotlyPlot:
             go.Bar(
                 x=lang_counts.index,
                 y=lang_counts.values,
-                marker_color=colors[:len(lang_counts)],
+                marker_color=colors[: len(lang_counts)],
                 opacity=0.8,
-                name="Language Distribution"
+                name="Language Distribution",
             ),
-            row=1, col=2
+            row=1,
+            col=2,
         )
 
         # Activity score distribution
@@ -81,9 +87,10 @@ class GitHubPlotlyPlot:
                 nbinsx=20,
                 marker_color=colors[2],
                 opacity=0.7,
-                name="Activity Distribution"
+                name="Activity Distribution",
             ),
-            row=2, col=1
+            row=2,
+            col=1,
         )
 
         # Repository age vs popularity
@@ -91,23 +98,22 @@ class GitHubPlotlyPlot:
             go.Scatter(
                 x=data["repo_age_days"],
                 y=data["popularity_score"],
-                mode='markers',
-                marker=dict(
-                    color=series_color(0),
-                    size=10,
-                    opacity=0.7
-                ),
+                mode="markers",
+                marker=dict(color=series_color(0), size=10, opacity=0.7),
                 text=data.apply(
-                    lambda x: f"<b>{x['repo_name']}</b><br>"
-                             f"Language: {x['primary_language']}<br>"
-                             f"Stars: {x['stars']}<br>"
-                             f"Active: {'Yes' if x['is_active'] else 'No'}",
-                    axis=1
+                    lambda x: (
+                        f"<b>{x['repo_name']}</b><br>"
+                        f"Language: {x['primary_language']}<br>"
+                        f"Stars: {x['stars']}<br>"
+                        f"Active: {'Yes' if x['is_active'] else 'No'}"
+                    ),
+                    axis=1,
                 ),
                 hovertemplate="%{text}<extra></extra>",
-                name="Age vs Popularity"
+                name="Age vs Popularity",
             ),
-            row=2, col=2
+            row=2,
+            col=2,
         )
 
         # Update layout
@@ -116,7 +122,7 @@ class GitHubPlotlyPlot:
             width=self.viz_config["width"],
             title_text=self.viz_config["title"],
             template=self.viz_config["template"],
-            showlegend=False
+            showlegend=False,
         )
 
         # Update axis labels
@@ -134,32 +140,36 @@ class GitHubPlotlyPlot:
     def plot_language_analysis(self, data: pd.DataFrame) -> go.Figure:
         """Create detailed language analysis dashboard."""
         fig = make_subplots(
-            rows=2, cols=2,
+            rows=2,
+            cols=2,
             subplot_titles=(
                 "Average Stars by Language",
                 "Total Commits by Language",
                 "Language Popularity Over Time",
-                "License Distribution"
+                "License Distribution",
             ),
-            specs=[[{"type": "bar"}, {"type": "bar"}],
-                   [{"type": "scatter"}, {"type": "pie"}]]
+            specs=[
+                [{"type": "bar"}, {"type": "bar"}],
+                [{"type": "scatter"}, {"type": "pie"}],
+            ],
         )
 
         # Average stars by language
-        lang_stats = data.groupby("primary_language").agg({
-            "stars": "mean",
-            "commits": "sum",
-            "repo_age_days": "mean"
-        }).round(1)
+        lang_stats = (
+            data.groupby("primary_language")
+            .agg({"stars": "mean", "commits": "sum", "repo_age_days": "mean"})
+            .round(1)
+        )
 
         fig.add_trace(
             go.Bar(
                 x=lang_stats.index,
                 y=lang_stats["stars"],
                 marker_color="lightblue",
-                name="Avg Stars"
+                name="Avg Stars",
             ),
-            row=1, col=1
+            row=1,
+            col=1,
         )
 
         # Total commits by language
@@ -168,9 +178,10 @@ class GitHubPlotlyPlot:
                 x=lang_stats.index,
                 y=lang_stats["commits"],
                 marker_color="lightgreen",
-                name="Total Commits"
+                name="Total Commits",
             ),
-            row=1, col=2
+            row=1,
+            col=2,
         )
 
         # Language popularity over repository age
@@ -180,11 +191,12 @@ class GitHubPlotlyPlot:
                 go.Scatter(
                     x=lang_data["repo_age_days"],
                     y=lang_data["stars"],
-                    mode='markers',
+                    mode="markers",
                     name=lang,
-                    opacity=0.7
+                    opacity=0.7,
                 ),
-                row=2, col=1
+                row=2,
+                col=1,
             )
 
         # License distribution
@@ -193,16 +205,17 @@ class GitHubPlotlyPlot:
             go.Pie(
                 labels=license_counts.index,
                 values=license_counts.values,
-                name="Licenses"
+                name="Licenses",
             ),
-            row=2, col=2
+            row=2,
+            col=2,
         )
 
         fig.update_layout(
             height=800,
             width=1200,
             title_text="GitHub Language & License Analysis",
-            template=self.viz_config["template"]
+            template=self.viz_config["template"],
         )
 
         return fig
@@ -215,7 +228,9 @@ class GitHubPlotlyPlot:
         export_dir = get_export_directory("html")
         full_path = export_dir / filename
 
-        fig.write_html(full_path, include_plotlyjs=self.export_config["html_include_plotlyjs"])
+        fig.write_html(
+            full_path, include_plotlyjs=self.export_config["html_include_plotlyjs"]
+        )
 
         return str(full_path)
 
@@ -227,6 +242,6 @@ class GitHubPlotlyPlot:
         export_dir = get_export_directory("images")
         full_path = export_dir / filename
 
-        fig.write_image(full_path, format=self.export_config['image_format'])
+        fig.write_image(full_path, format=self.export_config["image_format"])
 
         return str(full_path)

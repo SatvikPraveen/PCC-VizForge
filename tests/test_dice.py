@@ -92,7 +92,9 @@ class TestDiceGenerator:
         assert (sums == df.groupby("roll_id")["roll_sum"].first()).all()
         assert not df["is_doubles"].any()  # only defined for 2 dice
         rolls = df.groupby("roll_id").first()
-        np.testing.assert_allclose(rolls["rolling_avg"], rolls["roll_sum"].expanding().mean())
+        np.testing.assert_allclose(
+            rolls["rolling_avg"], rolls["roll_sum"].expanding().mean()
+        )
 
     def test_doubles(self):
         df = DiceGenerator(n_rolls=500, n_dice=2).generate()
@@ -113,7 +115,9 @@ class TestDiceGenerator:
     def test_probability_report(self):
         g = DiceGenerator(n_rolls=2000)
         report = g.calculate_probabilities(g.generate())
-        assert sum(report["theoretical_sum_probabilities"].values()) == pytest.approx(1.0)
+        assert sum(report["theoretical_sum_probabilities"].values()) == pytest.approx(
+            1.0
+        )
         assert report["total_rolls"] == 2000
         assert 0 <= report["sum_gof"]["p_value"] <= 1
         assert report["expected_sum_mean"] == pytest.approx(7.0)

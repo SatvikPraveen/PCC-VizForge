@@ -7,9 +7,9 @@ from .random_walk import RandomWalkGenerator
 from .weather import WeatherGenerator
 
 __all__ = [
-    "RandomWalkGenerator",
     "DiceGenerator",
-    "WeatherGenerator", 
     "EarthquakeGenerator",
     "GitHubGenerator",
+    "RandomWalkGenerator",
+    "WeatherGenerator",
 ]

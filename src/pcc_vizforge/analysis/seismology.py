@@ -65,7 +65,9 @@ def seismic_moment_nm(magnitude: ArrayLike) -> NDArray[np.float64]:
     return np.power(10.0, 1.5 * np.asarray(magnitude, dtype=float) + 9.1)
 
 
-def haversine_km(lat1: ArrayLike, lon1: ArrayLike, lat2: ArrayLike, lon2: ArrayLike) -> NDArray[np.float64]:
+def haversine_km(
+    lat1: ArrayLike, lon1: ArrayLike, lat2: ArrayLike, lon2: ArrayLike
+) -> NDArray[np.float64]:
     """Great-circle distance in kilometres."""
     p1, p2 = np.radians(lat1), np.radians(lat2)
     dphi = p2 - p1
@@ -78,7 +80,11 @@ def haversine_km(lat1: ArrayLike, lon1: ArrayLike, lat2: ArrayLike, lon2: ArrayL
 # Samplers
 # --------------------------------------------------------------------------- #
 def truncated_gr_sample(
-    rng: np.random.Generator, size: int, b_value: float, m_min: float, m_max: float = np.inf
+    rng: np.random.Generator,
+    size: int,
+    b_value: float,
+    m_min: float,
+    m_max: float = np.inf,
 ) -> NDArray[np.float64]:
     """Draw magnitudes from the (doubly) truncated Gutenberg-Richter law.
 
@@ -125,8 +131,9 @@ def frequency_magnitude_distribution(
     idx = np.round(m / bin_width).astype(np.int64)
     lo, hi = idx.min(), idx.max()
     counts = np.bincount(idx - lo, minlength=hi - lo + 1)
-    centres = np.arange(lo, hi + 1) * bin_width
-    cumulative = np.cumsum(counts[::-1])[::-1]
+    centres = (np.arange(lo, hi + 1) * bin_width).astype(np.float64)
+    counts = counts.astype(np.int64)
+    cumulative = np.cumsum(counts[::-1])[::-1].astype(np.int64)
     return centres, counts, cumulative
 
 
@@ -186,7 +193,15 @@ def b_value_mle(
     se = 2.30 * b**2 * np.sqrt(np.sum((m - mean) ** 2) / (n * (n - 1)))
     z = stats.norm.ppf(0.5 + confidence / 2)
     a = np.log10(n) + b * mc
-    return BValueEstimate(float(b), float(a), float(se), (float(b - z * se), float(b + z * se)), int(n), float(mc), "aki-utsu")
+    return BValueEstimate(
+        float(b),
+        float(a),
+        float(se),
+        (float(b - z * se), float(b + z * se)),
+        int(n),
+        float(mc),
+        "aki-utsu",
+    )
 
 
 def b_value_mle_truncated(
@@ -231,7 +246,15 @@ def b_value_mle_truncated(
     se = se_beta / np.log(10.0)
     z = stats.norm.ppf(0.5 + confidence / 2)
     a = np.log10(n) + b * mc
-    return BValueEstimate(float(b), float(a), float(se), (float(b - z * se), float(b + z * se)), int(n), float(mc), "page-truncated")
+    return BValueEstimate(
+        float(b),
+        float(a),
+        float(se),
+        (float(b - z * se), float(b + z * se)),
+        int(n),
+        float(mc),
+        "page-truncated",
+    )
 
 
 # --------------------------------------------------------------------------- #
@@ -282,7 +305,12 @@ def fit_omori(times: ArrayLike, t_max: float | None = None) -> OmoriFit:
         return float(p * np.sum(np.log(t + c)) + n * np.log(_omori_integral(c, p, T)))
 
     x0 = np.log([max(1e-3, 0.01 * T), 1.1])
-    res = optimize.minimize(nll, x0, method="Nelder-Mead", options={"xatol": 1e-8, "fatol": 1e-10, "maxiter": 4000})
+    res = optimize.minimize(
+        nll,
+        x0,
+        method="Nelder-Mead",
+        options={"xatol": 1e-8, "fatol": 1e-10, "maxiter": 4000},
+    )
     c, p = (float(v) for v in np.exp(res.x))
     K = n / _omori_integral(c, p, T)
     # Numerical Hessian in (log c, log p) for the stderr of p.
@@ -291,13 +319,20 @@ def fit_omori(times: ArrayLike, t_max: float | None = None) -> OmoriFit:
     for i in range(2):
         for j in range(2):
             ei, ej = np.eye(2)[i] * h, np.eye(2)[j] * h
-            H[i, j] = (nll(res.x + ei + ej) - nll(res.x + ei - ej) - nll(res.x - ei + ej) + nll(res.x - ei - ej)) / (4 * h * h)
+            H[i, j] = (
+                nll(res.x + ei + ej)
+                - nll(res.x + ei - ej)
+                - nll(res.x - ei + ej)
+                + nll(res.x - ei - ej)
+            ) / (4 * h * h)
     try:
         cov = np.linalg.inv(H)
         p_se = float(p * np.sqrt(max(cov[1, 1], 0.0)))
     except np.linalg.LinAlgError:  # pragma: no cover
         p_se = float("nan")
-    ll = -res.fun + n * np.log(K) - n * np.log(n) + n  # full (Poisson) log-likelihood up to const
+    ll = (
+        -res.fun + n * np.log(K) - n * np.log(n) + n
+    )  # full (Poisson) log-likelihood up to const
     return OmoriFit(float(K), c, p, p_se, int(n), T, float(ll))
 
 

@@ -50,8 +50,20 @@ from pcc_vizforge.generators.base import BaseGenerator, GeneratorParams
 __all__ = ["WeatherGenerator", "WeatherParams", "ar1"]
 
 STANDARD_PRESSURE_HPA = 1013.25
-SEASONS_NORTH = {12: "Winter", 1: "Winter", 2: "Winter", 3: "Spring", 4: "Spring", 5: "Spring",
-                 6: "Summer", 7: "Summer", 8: "Summer", 9: "Autumn", 10: "Autumn", 11: "Autumn"}
+SEASONS_NORTH = {
+    12: "Winter",
+    1: "Winter",
+    2: "Winter",
+    3: "Spring",
+    4: "Spring",
+    5: "Spring",
+    6: "Summer",
+    7: "Summer",
+    8: "Summer",
+    9: "Autumn",
+    10: "Autumn",
+    11: "Autumn",
+}
 FLIP = {"Winter": "Summer", "Summer": "Winter", "Spring": "Autumn", "Autumn": "Spring"}
 
 
@@ -106,12 +118,18 @@ class WeatherParams(GeneratorParams):
 
     def validate(self) -> None:
         super().validate()
-        if isinstance(self.n_days, bool) or not isinstance(self.n_days, (int, np.integer)) or self.n_days < 2:
+        if (
+            isinstance(self.n_days, bool)
+            or not isinstance(self.n_days, (int, np.integer))
+            or self.n_days < 2
+        ):
             raise InvalidParameterError("n_days must be an integer >= 2")
         try:
             datetime.fromisoformat(str(self.start_date))
         except ValueError as exc:
-            raise InvalidParameterError(f"start_date must be ISO formatted: {exc}") from exc
+            raise InvalidParameterError(
+                f"start_date must be ISO formatted: {exc}"
+            ) from exc
         if self.hemisphere not in ("north", "south"):
             raise InvalidParameterError("hemisphere must be 'north' or 'south'")
         for name in ("p_wet_given_dry", "p_wet_given_wet"):
@@ -131,10 +149,18 @@ class WeatherParams(GeneratorParams):
         ):
             if not getattr(self, name) > 0:
                 raise InvalidParameterError(f"{name} must be > 0")
-        for name in ("diurnal_range_dry", "diurnal_range_wet", "dewpoint_depression_dry", "dewpoint_depression_wet"):
+        for name in (
+            "diurnal_range_dry",
+            "diurnal_range_wet",
+            "dewpoint_depression_dry",
+            "dewpoint_depression_wet",
+        ):
             if getattr(self, name) < 0:
                 raise InvalidParameterError(f"{name} must be >= 0")
-        if self.precipitation_probability is not None and not 0 < self.precipitation_probability < 1:
+        if (
+            self.precipitation_probability is not None
+            and not 0 < self.precipitation_probability < 1
+        ):
             raise InvalidParameterError("precipitation_probability must be in (0, 1)")
 
     def transition_probabilities(self) -> tuple[float, float]:
@@ -160,10 +186,14 @@ class WeatherGenerator(BaseGenerator[WeatherParams]):
     def __init__(self, config_name: str | None = "weather", **kwargs: Any) -> None:
         super().__init__(config_name, **kwargs)
 
-    def _simulate(self, params: WeatherParams, rng: np.random.Generator) -> pd.DataFrame:
+    def _simulate(
+        self, params: WeatherParams, rng: np.random.Generator
+    ) -> pd.DataFrame:
         p = params
         n = p.n_days
-        dates = pd.date_range(datetime.fromisoformat(str(p.start_date)), periods=n, freq="D")
+        dates = pd.date_range(
+            datetime.fromisoformat(str(p.start_date)), periods=n, freq="D"
+        )
         doy = dates.dayofyear.to_numpy()
         t = np.arange(n, dtype=float)
 
@@ -180,11 +210,23 @@ class WeatherGenerator(BaseGenerator[WeatherParams]):
 
         # --- temperature --------------------------------------------------- #
         phase_sign = 1.0 if p.hemisphere == "north" else -1.0
-        seasonal = phase_sign * p.seasonal_amplitude * np.sin(2 * np.pi * (doy - p.seasonal_phase_days) / 365.25)
+        seasonal = (
+            phase_sign
+            * p.seasonal_amplitude
+            * np.sin(2 * np.pi * (doy - p.seasonal_phase_days) / 365.25)
+        )
         trend = p.warming_trend_c_per_decade * t / 3652.5
         anomaly = ar1(rng, n, p.temperature_persistence, p.temperature_variation)
-        t_mean = p.base_temperature + seasonal + trend + anomaly + p.wet_day_temperature_offset * wet
-        dtr = np.where(wet, p.diurnal_range_wet, p.diurnal_range_dry) * rng.lognormal(0.0, 0.15, n)
+        t_mean = (
+            p.base_temperature
+            + seasonal
+            + trend
+            + anomaly
+            + p.wet_day_temperature_offset * wet
+        )
+        dtr = np.where(wet, p.diurnal_range_wet, p.diurnal_range_dry) * rng.lognormal(
+            0.0, 0.15, n
+        )
         t_min, t_max = t_mean - dtr / 2, t_mean + dtr / 2
 
         def diurnal(hour: float) -> np.ndarray:
@@ -206,7 +248,9 @@ class WeatherGenerator(BaseGenerator[WeatherParams]):
             + ar1(rng, n, p.pressure_persistence, p.pressure_std)
             + p.wet_day_pressure_offset * wet
         )
-        cloud = np.clip(100 / (1 + np.exp(-(rh - 70) / 8)) + 25 * wet + rng.normal(0, 8, n), 0, 100)
+        cloud = np.clip(
+            100 / (1 + np.exp(-(rh - 70) / 8)) + 25 * wet + rng.normal(0, 8, n), 0, 100
+        )
 
         month = dates.month.to_numpy()
         season = np.array([SEASONS_NORTH[m] for m in month], dtype=object)
@@ -238,18 +282,26 @@ class WeatherGenerator(BaseGenerator[WeatherParams]):
         df["temperature_range"] = df["temperature_max"] - df["temperature_min"]
         df["is_rainy_day"] = wet
         df["heat_index"] = heat_index_c(t_max, relative_humidity(t_max, dewpoint))
-        df["comfort_index"] = self._calculate_comfort_index(df["temperature_avg"], df["humidity"])
+        df["comfort_index"] = self._calculate_comfort_index(
+            df["temperature_avg"], df["humidity"]
+        )
         return df
 
     # ------------------------------------------------------------------ #
     @staticmethod
-    def _classify_weather_vec(temp: np.ndarray, precip: np.ndarray, wind: np.ndarray) -> np.ndarray:
+    def _classify_weather_vec(
+        temp: np.ndarray, precip: np.ndarray, wind: np.ndarray
+    ) -> np.ndarray:
         conditions = [precip > 10, precip > 0, wind > 25, temp > 30, temp < 0]
         choices = ["Heavy Rain", "Light Rain", "Windy", "Hot", "Freezing"]
         return np.select(conditions, choices, default="Clear")
 
     def _classify_weather(self, temp: float, precip: float, wind: float) -> str:
-        return str(self._classify_weather_vec(np.array([temp]), np.array([precip]), np.array([wind]))[0])
+        return str(
+            self._classify_weather_vec(
+                np.array([temp]), np.array([precip]), np.array([wind])
+            )[0]
+        )
 
     def _get_season(self, day_of_year: int) -> str:
         month = (datetime(2023, 1, 1) + pd.Timedelta(days=day_of_year - 1)).month
@@ -299,7 +351,9 @@ class WeatherGenerator(BaseGenerator[WeatherParams]):
             "trend_se_c_per_decade_ols": harmonic.trend_stderr * 3652.5,
             "wet_day_fraction": float(data["is_rainy_day"].mean()),
             "total_precipitation_mm": float(data["precipitation"].sum()),
-            "humidity_temperature_correlation": float(np.corrcoef(temp, data["humidity"])[0, 1]),
+            "humidity_temperature_correlation": float(
+                np.corrcoef(temp, data["humidity"])[0, 1]
+            ),
         }
         try:
             stats["markov_chain"] = fit_markov_chain(data["is_rainy_day"]).to_dict()
@@ -309,9 +363,12 @@ class WeatherGenerator(BaseGenerator[WeatherParams]):
         # climatological practice we aggregate to annual means when at least
         # three full years are available (removing most serial correlation),
         # otherwise to monthly means with the Hamed-Rao correction.
-        deseason = pd.Series(temp - harmonic.predict(t) + harmonic.trend_per_unit * t, index=data["date"])
-        annual = deseason.groupby(deseason.index.year).agg(["mean", "size"])
-        annual = annual[annual["size"] >= 365]["mean"]
+        deseason = pd.Series(
+            temp - harmonic.predict(t) + harmonic.trend_per_unit * t, index=data["date"]
+        )
+        years = pd.DatetimeIndex(deseason.index).year
+        by_year = deseason.groupby(years).agg(["mean", "size"])
+        annual = by_year.loc[by_year["size"] >= 365, "mean"]
         if annual.size >= 4:
             mk = mann_kendall(annual.to_numpy())
             per_decade, resolution = 10.0, "annual"

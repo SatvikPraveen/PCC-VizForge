@@ -69,7 +69,9 @@ MAGNITUDE_CLASSES = (
 DEPTH_CLASSES = ((70.0, "Shallow"), (300.0, "Intermediate"), (np.inf, "Deep"))
 
 
-def branching_ratio(b_value: float, alpha: float, productivity: float, m_min: float, m_max: float) -> float:
+def branching_ratio(
+    b_value: float, alpha: float, productivity: float, m_min: float, m_max: float
+) -> float:
     """Expected number of direct aftershocks per event, E[K 10^{α(M - Mc)}]."""
     beta, a = b_value * np.log(10.0), alpha * np.log(10.0)
     L = m_max - m_min
@@ -77,7 +79,13 @@ def branching_ratio(b_value: float, alpha: float, productivity: float, m_min: fl
         return float(np.inf) if a >= beta else float(productivity * beta / (beta - a))
     if abs(beta - a) < 1e-12:
         return float(productivity * beta * L / (1.0 - np.exp(-beta * L)))
-    return float(productivity * beta / (beta - a) * (1.0 - np.exp(-(beta - a) * L)) / (1.0 - np.exp(-beta * L)))
+    return float(
+        productivity
+        * beta
+        / (beta - a)
+        * (1.0 - np.exp(-(beta - a) * L))
+        / (1.0 - np.exp(-beta * L))
+    )
 
 
 @dataclasses.dataclass(frozen=True)
@@ -119,7 +127,11 @@ class EarthquakeParams(GeneratorParams):
 
     def validate(self) -> None:
         super().validate()
-        if isinstance(self.n_earthquakes, bool) or not isinstance(self.n_earthquakes, (int, np.integer)) or self.n_earthquakes < 1:
+        if (
+            isinstance(self.n_earthquakes, bool)
+            or not isinstance(self.n_earthquakes, (int, np.integer))
+            or self.n_earthquakes < 1
+        ):
             raise InvalidParameterError("n_earthquakes must be a positive integer")
         m_lo, m_hi = self.magnitude_range
         if not m_hi > m_lo:
@@ -131,10 +143,14 @@ class EarthquakeParams(GeneratorParams):
             raise InvalidParameterError("depth_range must satisfy 0 <= min < max")
         la, lb = self.lat_range
         if not -90 <= la < lb <= 90:
-            raise InvalidParameterError("lat_range must lie within [-90, 90] and be increasing")
+            raise InvalidParameterError(
+                "lat_range must lie within [-90, 90] and be increasing"
+            )
         oa, ob = self.lon_range
         if not -180 <= oa < ob <= 180:
-            raise InvalidParameterError("lon_range must lie within [-180, 180] and be increasing")
+            raise InvalidParameterError(
+                "lon_range must lie within [-180, 180] and be increasing"
+            )
         if not self.duration_days > 0:
             raise InvalidParameterError("duration_days must be > 0")
         if not 0 <= self.shallow_fraction <= 1:
@@ -144,7 +160,9 @@ class EarthquakeParams(GeneratorParams):
         try:
             start = datetime.fromisoformat(str(self.start_date))
         except ValueError as exc:
-            raise InvalidParameterError(f"start_date must be ISO formatted: {exc}") from exc
+            raise InvalidParameterError(
+                f"start_date must be ISO formatted: {exc}"
+            ) from exc
         # pandas nanosecond timestamps only span years 1677-2262.
         span_days = (pd.Timestamp.max - pd.Timestamp(start)).days
         if self.duration_days >= span_days:
@@ -153,7 +171,14 @@ class EarthquakeParams(GeneratorParams):
             )
         total = 0.0
         for h in self.hotspot_list:
-            missing = {"name", "lat_center", "lon_center", "lat_range", "lon_range", "probability"} - set(h)
+            missing = {
+                "name",
+                "lat_center",
+                "lon_center",
+                "lat_range",
+                "lon_range",
+                "probability",
+            } - set(h)
             if missing:
                 raise InvalidParameterError(f"hotspot missing keys: {sorted(missing)}")
             if h["probability"] < 0:
@@ -168,7 +193,9 @@ class EarthquakeParams(GeneratorParams):
                     raise InvalidParameterError(f"aftershocks.{key} must be > 0")
             if a["alpha"] < 0:
                 raise InvalidParameterError("aftershocks.alpha must be >= 0")
-            n_br = branching_ratio(self.b_value, a["alpha"], a["productivity"], m_lo, m_hi)
+            n_br = branching_ratio(
+                self.b_value, a["alpha"], a["productivity"], m_lo, m_hi
+            )
             if n_br >= 1:
                 raise InvalidParameterError(
                     f"ETAS branching ratio {n_br:.3f} >= 1 (supercritical); lower productivity or alpha"
@@ -213,7 +240,9 @@ class EarthquakeGenerator(BaseGenerator[EarthquakeParams]):
             region[sel] = h["name"]
         return lat, lon, region
 
-    def _depths(self, p: EarthquakeParams, rng: np.random.Generator, n: int) -> np.ndarray:
+    def _depths(
+        self, p: EarthquakeParams, rng: np.random.Generator, n: int
+    ) -> np.ndarray:
         d_lo, d_hi = p.depth_range
         shallow = rng.random(n) < p.shallow_fraction
         depth = np.where(
@@ -223,7 +252,9 @@ class EarthquakeGenerator(BaseGenerator[EarthquakeParams]):
         )
         return np.clip(depth, d_lo, d_hi)
 
-    def _simulate(self, params: EarthquakeParams, rng: np.random.Generator) -> pd.DataFrame:
+    def _simulate(
+        self, params: EarthquakeParams, rng: np.random.Generator
+    ) -> pd.DataFrame:
         p = params
         m_lo, m_hi = p.magnitude_range
         n0 = p.n_earthquakes
@@ -239,15 +270,25 @@ class EarthquakeGenerator(BaseGenerator[EarthquakeParams]):
         if a["enabled"]:
             offset = n0
             cur_idx = np.arange(n0)
-            cur_t, cur_m, cur_lat, cur_lon, cur_reg = times[0], mags[0], lat0, lon0, reg0
+            cur_t, cur_m, cur_lat, cur_lon, cur_reg = (
+                times[0],
+                mags[0],
+                lat0,
+                lon0,
+                reg0,
+            )
             for gen in range(1, int(a["max_generations"]) + 1):
-                expected = a["productivity"] * np.power(10.0, a["alpha"] * (cur_m - m_lo))
+                expected = a["productivity"] * np.power(
+                    10.0, a["alpha"] * (cur_m - m_lo)
+                )
                 n_children = rng.poisson(expected)
                 total = int(n_children.sum())
                 if total == 0:
                     break
                 par = np.repeat(np.arange(cur_t.size), n_children)
-                delays = omori_sample_delays(rng, total, a["omori_c_days"], a["omori_p"], p.duration_days)
+                delays = omori_sample_delays(
+                    rng, total, a["omori_c_days"], a["omori_p"], p.duration_days
+                )
                 t_child = cur_t[par] + delays
                 keep = t_child < p.duration_days
                 par, t_child = par[keep], t_child[keep]
@@ -260,7 +301,9 @@ class EarthquakeGenerator(BaseGenerator[EarthquakeParams]):
                 dx, dy = rng.normal(0.0, 1.0, (2, total)) * sigma
                 deg = 180.0 / (np.pi * EARTH_RADIUS_KM)
                 lat_c = cur_lat[par] + dy * deg
-                lon_c = cur_lon[par] + dx * deg / np.maximum(np.cos(np.radians(cur_lat[par])), 1e-3)
+                lon_c = cur_lon[par] + dx * deg / np.maximum(
+                    np.cos(np.radians(cur_lat[par])), 1e-3
+                )
                 reg_c = cur_reg[par]
 
                 times.append(t_child)
@@ -273,7 +316,13 @@ class EarthquakeGenerator(BaseGenerator[EarthquakeParams]):
 
                 cur_idx = np.arange(offset, offset + total)
                 offset += total
-                cur_t, cur_m, cur_lat, cur_lon, cur_reg = t_child, m_child, lat_c, lon_c, reg_c
+                cur_t, cur_m, cur_lat, cur_lon, cur_reg = (
+                    t_child,
+                    m_child,
+                    lat_c,
+                    lon_c,
+                    reg_c,
+                )
 
         t = np.concatenate(times)
         mag = np.concatenate(mags)
@@ -295,7 +344,9 @@ class EarthquakeGenerator(BaseGenerator[EarthquakeParams]):
         order = np.argsort(t, kind="stable")
         new_id = np.empty_like(order)
         new_id[order] = np.arange(order.size)
-        parent_sorted = np.where(parent[order] >= 0, new_id[np.maximum(parent[order], 0)], -1)
+        parent_sorted = np.where(
+            parent[order] >= 0, new_id[np.maximum(parent[order], 0)], -1
+        )
 
         start = datetime.fromisoformat(str(p.start_date))
         ts = pd.to_datetime(start) + pd.to_timedelta(t[order], unit="D")
@@ -317,7 +368,9 @@ class EarthquakeGenerator(BaseGenerator[EarthquakeParams]):
         df["is_aftershock"] = df["generation"] > 0
         df["day_of_year"] = df["timestamp"].dt.dayofyear
         df["hour"] = df["timestamp"].dt.hour
-        df["magnitude_category"] = self._classify(df["magnitude"].to_numpy(), MAGNITUDE_CLASSES)
+        df["magnitude_category"] = self._classify(
+            df["magnitude"].to_numpy(), MAGNITUDE_CLASSES
+        )
         df["depth_category"] = self._classify(df["depth_km"].to_numpy(), DEPTH_CLASSES)
         df["energy_joules"] = seismic_energy_joules(df["magnitude"])
         df["seismic_moment_nm"] = seismic_moment_nm(df["magnitude"])
@@ -325,10 +378,14 @@ class EarthquakeGenerator(BaseGenerator[EarthquakeParams]):
         return df
 
     @staticmethod
-    def _classify(values: np.ndarray, classes: tuple[tuple[float, str], ...]) -> np.ndarray:
+    def _classify(
+        values: np.ndarray, classes: tuple[tuple[float, str], ...]
+    ) -> np.ndarray:
         edges = np.array([c[0] for c in classes])
         labels = np.array([c[1] for c in classes], dtype=object)
-        return labels[np.searchsorted(edges, values, side="right").clip(max=len(labels) - 1)]
+        return labels[
+            np.searchsorted(edges, values, side="right").clip(max=len(labels) - 1)
+        ]
 
     # Legacy helpers kept for API compatibility.
     def _categorize_magnitude(self, mag: float) -> str:
@@ -370,7 +427,9 @@ class EarthquakeGenerator(BaseGenerator[EarthquakeParams]):
             "mc_maxc": magnitude_of_completeness(mags, bin_width=bw),
         }
         if mags.size >= 2:
-            stats["b_value_aki"] = b_value_mle(mags, m_lo, bin_width=p.magnitude_bin).to_dict()
+            stats["b_value_aki"] = b_value_mle(
+                mags, m_lo, bin_width=p.magnitude_bin
+            ).to_dict()
             stats["b_value_truncated"] = b_value_mle_truncated(
                 mags, m_lo - p.magnitude_bin / 2, m_hi + p.magnitude_bin / 2
             ).to_dict()

@@ -68,7 +68,10 @@ def summarize(df: pd.DataFrame, by: str) -> pd.DataFrame:
 # --------------------------------------------------------------------------- #
 # Individual studies (each returns replicate-level rows)
 # --------------------------------------------------------------------------- #
-def _study_b_value(seeds: list[np.random.SeedSequence], sizes: Iterable[int] = (50, 100, 250, 500, 1000, 2500)) -> pd.DataFrame:
+def _study_b_value(
+    seeds: list[np.random.SeedSequence],
+    sizes: Iterable[int] = (50, 100, 250, 500, 1000, 2500),
+) -> pd.DataFrame:
     from pcc_vizforge.analysis.seismology import b_value_mle, truncated_gr_sample
 
     rows = []
@@ -76,11 +79,21 @@ def _study_b_value(seeds: list[np.random.SeedSequence], sizes: Iterable[int] = (
         for i, ss in enumerate(seeds):
             m = truncated_gr_sample(make_rng(ss), n, 1.0, 2.0)
             est = b_value_mle(m, 2.0)
-            rows.append({"n_events": n, "replicate": i, "truth": 1.0, "estimate": est.b_value, "covered": est.ci[0] <= 1.0 <= est.ci[1]})
+            rows.append(
+                {
+                    "n_events": n,
+                    "replicate": i,
+                    "truth": 1.0,
+                    "estimate": est.b_value,
+                    "covered": est.ci[0] <= 1.0 <= est.ci[1],
+                }
+            )
     return pd.DataFrame(rows)
 
 
-def _study_msd_exponent(seeds: list[np.random.SeedSequence], hursts: Iterable[float] = (0.25, 0.5, 0.75)) -> pd.DataFrame:
+def _study_msd_exponent(
+    seeds: list[np.random.SeedSequence], hursts: Iterable[float] = (0.25, 0.5, 0.75)
+) -> pd.DataFrame:
     from pcc_vizforge.analysis.diffusion import bootstrap_msd_exponent
     from pcc_vizforge.generators.random_walk import (
         RandomWalkParams,
@@ -93,11 +106,21 @@ def _study_msd_exponent(seeds: list[np.random.SeedSequence], hursts: Iterable[fl
         for i, ss in enumerate(seeds):
             pos = np.cumsum(simulate_increments(p, make_rng(ss)), axis=1)
             fit = bootstrap_msd_exponent(pos, n_bootstrap=200, seed=ss.spawn(1)[0])
-            rows.append({"hurst": h, "replicate": i, "truth": 2 * h, "estimate": fit.alpha, "covered": fit.alpha_ci[0] <= 2 * h <= fit.alpha_ci[1]})
+            rows.append(
+                {
+                    "hurst": h,
+                    "replicate": i,
+                    "truth": 2 * h,
+                    "estimate": fit.alpha,
+                    "covered": fit.alpha_ci[0] <= 2 * h <= fit.alpha_ci[1],
+                }
+            )
     return pd.DataFrame(rows)
 
 
-def _study_power_law(seeds: list[np.random.SeedSequence], alphas: Iterable[float] = (1.8, 2.2, 2.6, 3.0)) -> pd.DataFrame:
+def _study_power_law(
+    seeds: list[np.random.SeedSequence], alphas: Iterable[float] = (1.8, 2.2, 2.6, 3.0)
+) -> pd.DataFrame:
     from pcc_vizforge.analysis.heavy_tails import fit_power_law, sample_power_law
 
     rows = []
@@ -105,12 +128,25 @@ def _study_power_law(seeds: list[np.random.SeedSequence], alphas: Iterable[float
         for i, ss in enumerate(seeds):
             x = sample_power_law(make_rng(ss), 1000, a, 1, discrete=True)
             fit = fit_power_law(x, xmin=1)
-            lo, hi = fit.alpha - 1.96 * fit.alpha_stderr, fit.alpha + 1.96 * fit.alpha_stderr
-            rows.append({"alpha": a, "replicate": i, "truth": a, "estimate": fit.alpha, "covered": lo <= a <= hi})
+            lo, hi = (
+                fit.alpha - 1.96 * fit.alpha_stderr,
+                fit.alpha + 1.96 * fit.alpha_stderr,
+            )
+            rows.append(
+                {
+                    "alpha": a,
+                    "replicate": i,
+                    "truth": a,
+                    "estimate": fit.alpha,
+                    "covered": lo <= a <= hi,
+                }
+            )
     return pd.DataFrame(rows)
 
 
-def _study_dice_gof(seeds: list[np.random.SeedSequence], n_dice: Iterable[int] = (1, 2, 3, 5)) -> pd.DataFrame:
+def _study_dice_gof(
+    seeds: list[np.random.SeedSequence], n_dice: Iterable[int] = (1, 2, 3, 5)
+) -> pd.DataFrame:
     from pcc_vizforge.generators.dice import DiceGenerator
 
     rows = []
@@ -118,11 +154,15 @@ def _study_dice_gof(seeds: list[np.random.SeedSequence], n_dice: Iterable[int] =
         gen = DiceGenerator(n_rolls=500, n_dice=k)
         for i, ss in enumerate(seeds):
             p = gen.calculate_probabilities(gen.generate(seed=ss))["sum_gof"]["p_value"]
-            rows.append({"n_dice": k, "replicate": i, "p_value": p, "rejected_5pct": p < 0.05})
+            rows.append(
+                {"n_dice": k, "replicate": i, "p_value": p, "rejected_5pct": p < 0.05}
+            )
     return pd.DataFrame(rows)
 
 
-def _study_trend_hac(seeds: list[np.random.SeedSequence], phis: Iterable[float] = (0.0, 0.4, 0.7, 0.9)) -> pd.DataFrame:
+def _study_trend_hac(
+    seeds: list[np.random.SeedSequence], phis: Iterable[float] = (0.0, 0.4, 0.7, 0.9)
+) -> pd.DataFrame:
     from pcc_vizforge.analysis.timeseries import fit_harmonics
     from pcc_vizforge.generators.weather import ar1
 
@@ -131,9 +171,16 @@ def _study_trend_hac(seeds: list[np.random.SeedSequence], phis: Iterable[float] 
     slope = 0.002
     for phi in phis:
         for i, ss in enumerate(seeds):
-            y = slope * t + 5 * np.sin(2 * np.pi * t / 365.25) + ar1(make_rng(ss), t.size, phi, 2.0)
+            y = (
+                slope * t
+                + 5 * np.sin(2 * np.pi * t / 365.25)
+                + ar1(make_rng(ss), t.size, phi, 2.0)
+            )
             fit = fit_harmonics(t, y, n_harmonics=1)
-            for method, se in (("ols", fit.trend_stderr), ("hac", fit.trend_stderr_hac)):
+            for method, se in (
+                ("ols", fit.trend_stderr),
+                ("hac", fit.trend_stderr_hac),
+            ):
                 rows.append(
                     {
                         "phi": phi,
@@ -147,19 +194,43 @@ def _study_trend_hac(seeds: list[np.random.SeedSequence], phis: Iterable[float] 
     return pd.DataFrame(rows)
 
 
-STUDIES: dict[str, tuple[Callable[[list[np.random.SeedSequence]], pd.DataFrame], str, str]] = {
-    "b_value": (_study_b_value, "n_events", "Aki-Utsu b-value MLE (true b = 1) vs catalogue size"),
-    "msd_exponent": (_study_msd_exponent, "hurst", "Walk-bootstrap MSD exponent for fBm (true α = 2H)"),
-    "power_law": (_study_power_law, "alpha", "Discrete power-law MLE (x_min = 1, n = 1000)"),
-    "dice_gof": (_study_dice_gof, "n_dice", "Size of the χ² GOF test on dice sums under H0"),
-    "trend_hac": (_study_trend_hac, "phi", "Trend-CI coverage, OLS vs Newey-West, AR(1) noise"),
+STUDIES: dict[
+    str, tuple[Callable[[list[np.random.SeedSequence]], pd.DataFrame], str, str]
+] = {
+    "b_value": (
+        _study_b_value,
+        "n_events",
+        "Aki-Utsu b-value MLE (true b = 1) vs catalogue size",
+    ),
+    "msd_exponent": (
+        _study_msd_exponent,
+        "hurst",
+        "Walk-bootstrap MSD exponent for fBm (true α = 2H)",
+    ),
+    "power_law": (
+        _study_power_law,
+        "alpha",
+        "Discrete power-law MLE (x_min = 1, n = 1000)",
+    ),
+    "dice_gof": (
+        _study_dice_gof,
+        "n_dice",
+        "Size of the χ² GOF test on dice sums under H0",
+    ),
+    "trend_hac": (
+        _study_trend_hac,
+        "phi",
+        "Trend-CI coverage, OLS vs Newey-West, AR(1) noise",
+    ),
 }
 
 
 def run_study(name: str, n_replicates: int = 200, seed: int = 20240101) -> StudyResult:
     """Run a validation study and summarise it."""
     if name not in STUDIES:
-        raise InvalidParameterError(f"Unknown study {name!r}; choose from {sorted(STUDIES)}")
+        raise InvalidParameterError(
+            f"Unknown study {name!r}; choose from {sorted(STUDIES)}"
+        )
     fn, by, description = STUDIES[name]
     reps = fn(spawn_seeds(seed, n_replicates))
     if name == "dice_gof":
@@ -172,7 +243,9 @@ def run_study(name: str, n_replicates: int = 200, seed: int = 20240101) -> Study
                     "n_replicates": len(g),
                     "size_at_5pct": size,
                     "size_mcse": float(np.sqrt(size * (1 - size) / len(g))),
-                    "ks_uniform_pvalue": float(stats.kstest(g["p_value"], "uniform").pvalue),
+                    "ks_uniform_pvalue": float(
+                        stats.kstest(g["p_value"], "uniform").pvalue
+                    ),
                 }
             )
         summary = pd.DataFrame(rows)

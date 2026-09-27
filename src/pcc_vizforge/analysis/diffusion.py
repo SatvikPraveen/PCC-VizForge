@@ -54,7 +54,9 @@ def _as_positions(positions: ArrayLike) -> NDArray[np.float64]:
     return arr
 
 
-def log_spaced_lags(n_steps: int, n_lags: int = 30, min_lag: int = 1) -> NDArray[np.int64]:
+def log_spaced_lags(
+    n_steps: int, n_lags: int = 30, min_lag: int = 1
+) -> NDArray[np.int64]:
     """Unique, approximately log-spaced integer lags in ``[min_lag, n_steps-1]``."""
     if n_steps < 2:
         raise InvalidParameterError("n_steps must be >= 2")
@@ -62,7 +64,9 @@ def log_spaced_lags(n_steps: int, n_lags: int = 30, min_lag: int = 1) -> NDArray
     return np.unique(np.geomspace(min_lag, hi, n_lags).round().astype(np.int64))
 
 
-def ensemble_msd(positions: ArrayLike) -> tuple[NDArray[np.float64], NDArray[np.float64]]:
+def ensemble_msd(
+    positions: ArrayLike,
+) -> tuple[NDArray[np.float64], NDArray[np.float64]]:
     """Ensemble-averaged MSD from the origin and its standard error.
 
     Returns:
@@ -72,7 +76,11 @@ def ensemble_msd(positions: ArrayLike) -> tuple[NDArray[np.float64], NDArray[np.
     pos = _as_positions(positions)
     sq = np.sum(pos**2, axis=-1)  # (walks, steps)
     msd = sq.mean(axis=0)
-    sem = sq.std(axis=0, ddof=1) / np.sqrt(sq.shape[0]) if sq.shape[0] > 1 else np.zeros_like(msd)
+    sem = (
+        sq.std(axis=0, ddof=1) / np.sqrt(sq.shape[0])
+        if sq.shape[0] > 1
+        else np.zeros_like(msd)
+    )
     return msd, sem
 
 
@@ -93,7 +101,9 @@ def time_averaged_msd(
     pos = _as_positions(positions)
     w, n, d = pos.shape
     full = np.concatenate([np.zeros((w, 1, d)), pos], axis=1)  # include r(0)=0
-    lag_arr = log_spaced_lags(n + 1) if lags is None else np.asarray(lags, dtype=np.int64)
+    lag_arr = (
+        log_spaced_lags(n + 1) if lags is None else np.asarray(lags, dtype=np.int64)
+    )
     if np.any(lag_arr < 1) or np.any(lag_arr > n):
         raise InvalidParameterError(f"lags must lie in [1, {n}]")
     out = np.empty((w, lag_arr.size))
@@ -181,7 +191,9 @@ def fit_msd_exponent(
         mask &= s > 0
         w = (y[mask] / s[mask]) ** 2
     if mask.sum() < 3:
-        raise InvalidParameterError("need at least 3 positive points to fit an exponent")
+        raise InvalidParameterError(
+            "need at least 3 positive points to fit an exponent"
+        )
 
     lx, ly = np.log(x[mask]), np.log(y[mask])
     W = np.ones_like(lx) if w is None else w
@@ -229,7 +241,9 @@ def bootstrap_msd_exponent(
     w, n, _ = pos.shape
     if w < 2:
         raise InvalidParameterError("bootstrap needs at least two walks")
-    lag_arr = log_spaced_lags(n + 1) if lags is None else np.asarray(lags, dtype=np.int64)
+    lag_arr = (
+        log_spaced_lags(n + 1) if lags is None else np.asarray(lags, dtype=np.int64)
+    )
     if np.any(lag_arr < 1) or np.any(lag_arr > n):
         raise InvalidParameterError(f"lags must lie in [1, {n}]")
     sq = np.sum(pos[:, lag_arr - 1] ** 2, axis=-1)  # (walks, lags)
@@ -239,7 +253,11 @@ def bootstrap_msd_exponent(
     boot_msd = sq[idx].mean(axis=1)  # (n_bootstrap, lags)
     log_x = np.log(lag_arr.astype(float))
     xc = log_x - log_x.mean()
-    alphas = (np.log(boot_msd) - np.log(boot_msd).mean(axis=1, keepdims=True)) @ xc / (xc @ xc)
+    alphas = (
+        (np.log(boot_msd) - np.log(boot_msd).mean(axis=1, keepdims=True))
+        @ xc
+        / (xc @ xc)
+    )
     q = (1 - confidence) / 2
     lo, hi = np.quantile(alphas, [q, 1 - q])
     return PowerLawFit(

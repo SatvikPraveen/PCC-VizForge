@@ -1,6 +1,5 @@
 """Plotly plotting for earthquake data."""
 
-
 import pandas as pd
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
@@ -27,24 +26,26 @@ class EarthquakePlotlyPlot:
             go.Scattergeo(
                 lat=data["latitude"],
                 lon=data["longitude"],
-                mode='markers',
+                mode="markers",
                 marker=dict(
                     size=data["magnitude"] * 4,  # Scale marker size by magnitude
                     color=data["magnitude"],
                     colorscale=plotly_colorscale("sequential"),
                     colorbar=dict(title=dict(text="Magnitude", side="right")),
                     opacity=0.7,
-                    sizemode='diameter'
+                    sizemode="diameter",
                 ),
                 text=data.apply(
-                    lambda x: f"<b>Magnitude:</b> {x['magnitude']:.1f}<br>"
-                             f"<b>Depth:</b> {x['depth_km']:.0f} km<br>"
-                             f"<b>Region:</b> {x['region']}<br>"
-                             f"<b>Date:</b> {x['timestamp'].strftime('%Y-%m-%d %H:%M')}",
-                    axis=1
+                    lambda x: (
+                        f"<b>Magnitude:</b> {x['magnitude']:.1f}<br>"
+                        f"<b>Depth:</b> {x['depth_km']:.0f} km<br>"
+                        f"<b>Region:</b> {x['region']}<br>"
+                        f"<b>Date:</b> {x['timestamp'].strftime('%Y-%m-%d %H:%M')}"
+                    ),
+                    axis=1,
                 ),
                 hovertemplate="%{text}<extra></extra>",
-                name="Earthquakes"
+                name="Earthquakes",
             )
         )
 
@@ -61,13 +62,9 @@ class EarthquakePlotlyPlot:
             ),
             height=self.viz_config["height"],
             width=self.viz_config["width"],
-            title=dict(
-                text=self.viz_config["title"],
-                x=0.5,
-                font=dict(size=20)
-            ),
+            title=dict(text=self.viz_config["title"], x=0.5, font=dict(size=20)),
             template=self.viz_config["template"],
-            showlegend=False
+            showlegend=False,
         )
 
         return fig
@@ -75,15 +72,18 @@ class EarthquakePlotlyPlot:
     def plot_analysis(self, data: pd.DataFrame) -> go.Figure:
         """Create detailed earthquake analysis dashboard."""
         fig = make_subplots(
-            rows=2, cols=2,
+            rows=2,
+            cols=2,
             subplot_titles=(
                 "Magnitude Distribution",
                 "Depth vs Magnitude",
                 "Regional Activity",
-                "Temporal Distribution"
+                "Temporal Distribution",
             ),
-            specs=[[{"type": "histogram"}, {"type": "scatter"}],
-                   [{"type": "bar"}, {"type": "histogram"}]]
+            specs=[
+                [{"type": "histogram"}, {"type": "scatter"}],
+                [{"type": "bar"}, {"type": "histogram"}],
+            ],
         )
 
         # Magnitude distribution
@@ -93,9 +93,10 @@ class EarthquakePlotlyPlot:
                 nbinsx=25,
                 marker_color="darkred",
                 opacity=0.7,
-                name="Magnitude Distribution"
+                name="Magnitude Distribution",
             ),
-            row=1, col=1
+            row=1,
+            col=1,
         )
 
         # Depth vs Magnitude scatter
@@ -103,20 +104,21 @@ class EarthquakePlotlyPlot:
             go.Scatter(
                 x=data["magnitude"],
                 y=data["depth_km"],
-                mode='markers',
+                mode="markers",
                 marker=dict(
                     color=data["magnitude"],
                     colorscale=plotly_colorscale("sequential"),
                     size=8,
-                    opacity=0.6
+                    opacity=0.6,
                 ),
                 text=data["region"],
-                hovertemplate="<b>Magnitude:</b> %{x:.1f}<br>" +
-                             "<b>Depth:</b> %{y:.0f} km<br>" +
-                             "<b>Region:</b> %{text}<extra></extra>",
-                name="Depth vs Magnitude"
+                hovertemplate="<b>Magnitude:</b> %{x:.1f}<br>"
+                + "<b>Depth:</b> %{y:.0f} km<br>"
+                + "<b>Region:</b> %{text}<extra></extra>",
+                name="Depth vs Magnitude",
             ),
-            row=1, col=2
+            row=1,
+            col=2,
         )
 
         # Regional activity
@@ -125,12 +127,13 @@ class EarthquakePlotlyPlot:
             go.Bar(
                 x=region_counts.values,
                 y=region_counts.index,
-                orientation='h',
+                orientation="h",
                 marker_color="steelblue",
                 opacity=0.8,
-                name="Regional Activity"
+                name="Regional Activity",
             ),
-            row=2, col=1
+            row=2,
+            col=1,
         )
 
         # Temporal distribution (hour of day)
@@ -140,9 +143,10 @@ class EarthquakePlotlyPlot:
                 nbinsx=24,
                 marker_color="green",
                 opacity=0.7,
-                name="Hourly Distribution"
+                name="Hourly Distribution",
             ),
-            row=2, col=2
+            row=2,
+            col=2,
         )
 
         # Update layout
@@ -151,7 +155,7 @@ class EarthquakePlotlyPlot:
             width=1200,
             title_text="Comprehensive Earthquake Analysis",
             template=self.viz_config["template"],
-            showlegend=False
+            showlegend=False,
         )
 
         # Update axis labels
@@ -174,7 +178,9 @@ class EarthquakePlotlyPlot:
         export_dir = get_export_directory("html")
         full_path = export_dir / filename
 
-        fig.write_html(full_path, include_plotlyjs=self.export_config["html_include_plotlyjs"])
+        fig.write_html(
+            full_path, include_plotlyjs=self.export_config["html_include_plotlyjs"]
+        )
 
         return str(full_path)
 
@@ -186,6 +192,6 @@ class EarthquakePlotlyPlot:
         export_dir = get_export_directory("images")
         full_path = export_dir / filename
 
-        fig.write_image(full_path, format=self.export_config['image_format'])
+        fig.write_image(full_path, format=self.export_config["image_format"])
 
         return str(full_path)

@@ -66,7 +66,11 @@ def saturation_vapor_pressure(temp_c: ArrayLike) -> NDArray[np.float64]:
 
 def relative_humidity(temp_c: ArrayLike, dewpoint_c: ArrayLike) -> NDArray[np.float64]:
     """Relative humidity [%] from air and dew-point temperature."""
-    rh = 100.0 * saturation_vapor_pressure(dewpoint_c) / saturation_vapor_pressure(temp_c)
+    rh = (
+        100.0
+        * saturation_vapor_pressure(dewpoint_c)
+        / saturation_vapor_pressure(temp_c)
+    )
     return np.clip(rh, 0.0, 100.0)
 
 
@@ -122,14 +126,18 @@ class HarmonicFit:
     coefficients: tuple[float, ...]
 
     def predict(self, t: ArrayLike) -> NDArray[np.float64]:
-        X = _harmonic_design(np.asarray(t, dtype=float), self.period, len(self.amplitudes), True)
+        X = _harmonic_design(
+            np.asarray(t, dtype=float), self.period, len(self.amplitudes), True
+        )
         return X @ np.asarray(self.coefficients)
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
 
 
-def _harmonic_design(t: NDArray[np.float64], period: float, n_harmonics: int, trend: bool) -> NDArray[np.float64]:
+def _harmonic_design(
+    t: NDArray[np.float64], period: float, n_harmonics: int, trend: bool
+) -> NDArray[np.float64]:
     cols = [np.ones_like(t)]
     if trend:
         cols.append(t)
@@ -139,7 +147,9 @@ def _harmonic_design(t: NDArray[np.float64], period: float, n_harmonics: int, tr
     return np.column_stack(cols)
 
 
-def newey_west_cov(X: NDArray[np.float64], resid: NDArray[np.float64], lags: int) -> NDArray[np.float64]:
+def newey_west_cov(
+    X: NDArray[np.float64], resid: NDArray[np.float64], lags: int
+) -> NDArray[np.float64]:
     """Heteroskedasticity- and autocorrelation-consistent (HAC) covariance.
 
     Newey & West (1987) sandwich estimator with Bartlett weights
@@ -196,7 +206,9 @@ def fit_harmonics(
         raise InvalidParameterError("t and y must be 1-D arrays of equal length")
     X = _harmonic_design(tt, period, n_harmonics, trend=True)
     if yy.size <= X.shape[1]:
-        raise InvalidParameterError("not enough observations for the requested harmonics")
+        raise InvalidParameterError(
+            "not enough observations for the requested harmonics"
+        )
     coef, *_ = np.linalg.lstsq(X, yy, rcond=None)
     resid = yy - X @ coef
     dof = yy.size - X.shape[1]
@@ -239,7 +251,12 @@ def sens_slope(
     yy = np.asarray(y, dtype=float)
     tt = np.arange(yy.size, dtype=float) if t is None else np.asarray(t, dtype=float)
     res = stats.theilslopes(yy, tt, alpha=confidence)
-    return float(res.slope), float(res.intercept), float(res.low_slope), float(res.high_slope)
+    return (
+        float(res.slope),
+        float(res.intercept),
+        float(res.low_slope),
+        float(res.high_slope),
+    )
 
 
 def _mk_statistic(y: NDArray[np.float64]) -> tuple[float, float]:
@@ -250,7 +267,9 @@ def _mk_statistic(y: NDArray[np.float64]) -> tuple[float, float]:
         s += float(np.sign(y[i + 1 :] - y[i]).sum())
     _, counts = np.unique(y, return_counts=True)
     ties = counts[counts > 1]
-    var = (n * (n - 1) * (2 * n + 5) - np.sum(ties * (ties - 1) * (2 * ties + 5))) / 18.0
+    var = (
+        n * (n - 1) * (2 * n + 5) - np.sum(ties * (ties - 1) * (2 * ties + 5))
+    ) / 18.0
     return s, float(var)
 
 
@@ -284,7 +303,9 @@ def mann_kendall(
     if yy.size < 4 or not np.all(np.isfinite(yy)):
         raise InvalidParameterError("Mann-Kendall needs >= 4 finite observations")
     if yy.size > 20_000:
-        raise InvalidParameterError("series too long for the O(n²) Mann-Kendall statistic")
+        raise InvalidParameterError(
+            "series too long for the O(n²) Mann-Kendall statistic"
+        )
     details: dict[str, Any] = {"correction": correction}
     series = yy
     if correction == "prewhiten":
@@ -305,10 +326,12 @@ def mann_kendall(
         bound = stats.norm.ppf(1 - alpha_acf / 2) / np.sqrt(n)
         rho = np.where(np.abs(rho) > bound, rho, 0.0)
         k = np.arange(1, n)
-        ratio = 1 + 2 / (n * (n - 1) * (n - 2)) * np.sum((n - k) * (n - k - 1) * (n - k - 2) * rho)
-        ratio = max(float(ratio), 1e-12)
-        details["variance_inflation"] = ratio
-        var *= ratio
+        ratio = 1 + 2 / (n * (n - 1) * (n - 2)) * np.sum(
+            (n - k) * (n - k - 1) * (n - k - 2) * rho
+        )
+        inflation = max(float(ratio), 1e-12)
+        details["variance_inflation"] = inflation
+        var *= inflation
 
     if var <= 0:
         z = 0.0
@@ -321,7 +344,9 @@ def mann_kendall(
     details.update({"S": s, "var_S": var, "tau": s / (0.5 * n * (n - 1)), "n": n})
     slope, _, lo, hi = sens_slope(yy)
     details.update({"sens_slope": slope, "sens_slope_ci": (lo, hi)})
-    return TestResult("mann_kendall", float(z), float(2 * stats.norm.sf(abs(z))), None, details)
+    return TestResult(
+        "mann_kendall", float(z), float(2 * stats.norm.sf(abs(z))), None, details
+    )
 
 
 # --------------------------------------------------------------------------- #

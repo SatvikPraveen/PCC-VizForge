@@ -26,7 +26,9 @@ from pcc_vizforge.rng import make_rng, spawn_rngs
 class TestThermodynamics:
     def test_saturation_vapor_pressure_reference(self):
         # ~6.11 hPa at 0 °C, ~23.4 hPa at 20 °C, ~42.4 hPa at 30 °C
-        np.testing.assert_allclose(saturation_vapor_pressure([0, 20, 30]), [6.11, 23.37, 42.43], rtol=0.01)
+        np.testing.assert_allclose(
+            saturation_vapor_pressure([0, 20, 30]), [6.11, 23.37, 42.43], rtol=0.01
+        )
 
     def test_relative_humidity(self):
         assert relative_humidity(20, 20) == pytest.approx(100)
@@ -95,7 +97,12 @@ class TestTrend:
 class TestHarmonics:
     def test_recovers_parameters(self):
         t = np.arange(730.0)
-        y = 12 + 0.001 * t + 8 * np.cos(2 * np.pi * t / 365.25 - 1.0) + make_rng(1).normal(0, 0.5, t.size)
+        y = (
+            12
+            + 0.001 * t
+            + 8 * np.cos(2 * np.pi * t / 365.25 - 1.0)
+            + make_rng(1).normal(0, 0.5, t.size)
+        )
         fit = fit_harmonics(t, y, n_harmonics=1)
         assert fit.amplitudes[0] == pytest.approx(8, abs=0.1)
         assert fit.phases[0] == pytest.approx(1.0, abs=0.02)
@@ -126,7 +133,12 @@ class TestHarmonics:
         n_rep = 150
         for rng in spawn_rngs(12, n_rep):
             t = np.arange(1500.0)
-            y = 10 + 0.002 * t + 5 * np.sin(2 * np.pi * t / 365.25) + ar1(rng, 1500, 0.7, 3.0)
+            y = (
+                10
+                + 0.002 * t
+                + 5 * np.sin(2 * np.pi * t / 365.25)
+                + ar1(rng, 1500, 0.7, 3.0)
+            )
             fit = fit_harmonics(t, y, n_harmonics=1)
             hac += abs(fit.trend_per_unit - 0.002) < 1.96 * fit.trend_stderr_hac
             ols += abs(fit.trend_per_unit - 0.002) < 1.96 * fit.trend_stderr
@@ -168,8 +180,17 @@ class TestWeatherGenerator:
         assert ((df["precipitation"] > 0) == df["is_rainy_day"]).all()
         assert (df["temperature_min"] <= df["temperature_avg"]).all()
         assert (df["temperature_avg"] <= df["temperature_max"]).all()
-        for col in ("temperature_morning", "temperature_afternoon", "temperature_evening", "temperature_night"):
-            assert df[col].between(df["temperature_min"] - 1e-9, df["temperature_max"] + 1e-9).all()
+        for col in (
+            "temperature_morning",
+            "temperature_afternoon",
+            "temperature_evening",
+            "temperature_night",
+        ):
+            assert (
+                df[col]
+                .between(df["temperature_min"] - 1e-9, df["temperature_max"] + 1e-9)
+                .all()
+            )
         assert (df["dewpoint"] <= df["temperature_avg"] + 1e-9).all()
         assert df["cloud_cover"].between(0, 100).all()
 
@@ -236,7 +257,13 @@ class TestWeatherGenerator:
 
     @pytest.mark.parametrize(
         "bad",
-        [{"n_days": 1}, {"hemisphere": "east"}, {"p_wet_given_dry": 1.5}, {"temperature_persistence": 1}, {"precipitation_shape": 0}],
+        [
+            {"n_days": 1},
+            {"hemisphere": "east"},
+            {"p_wet_given_dry": 1.5},
+            {"temperature_persistence": 1},
+            {"precipitation_shape": 0},
+        ],
     )
     def test_invalid(self, bad):
         with pytest.raises(InvalidParameterError):

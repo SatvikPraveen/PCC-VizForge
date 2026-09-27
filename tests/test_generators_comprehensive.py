@@ -1,37 +1,29 @@
 """Comprehensive tests for data generators and utilities."""
 
-import logging
-import pytest
 import pandas as pd
-import numpy as np
-from pathlib import Path
+import pytest
 
 from pcc_vizforge.exceptions import (
     InvalidParameterError,
-    DataGenerationError,
-    DataShapeError,
 )
 from pcc_vizforge.generators import (
-    RandomWalkGenerator,
     DiceGenerator,
-    WeatherGenerator,
     EarthquakeGenerator,
     GitHubGenerator,
+    RandomWalkGenerator,
+    WeatherGenerator,
 )
 from pcc_vizforge.utils.io import (
-    load_config,
-    save_data,
-    load_data,
     list_available_configs,
-    get_data_directory,
+    load_data,
+    save_data,
 )
 from pcc_vizforge.utils.validation import (
-    validate_positive_int,
-    validate_positive_float,
-    validate_dimensions,
     validate_data_size,
+    validate_dimensions,
+    validate_positive_float,
+    validate_positive_int,
 )
-
 
 # ==================== Fixture Definitions ====================
 
@@ -45,11 +37,13 @@ def temp_data_dir(tmp_path):
 @pytest.fixture
 def sample_dataframe():
     """Fixture providing a sample DataFrame."""
-    return pd.DataFrame({
-        "id": [1, 2, 3, 4, 5],
-        "value": [10.5, 20.3, 15.8, 25.1, 30.4],
-        "category": ["A", "B", "A", "C", "B"],
-    })
+    return pd.DataFrame(
+        {
+            "id": [1, 2, 3, 4, 5],
+            "value": [10.5, 20.3, 15.8, 25.1, 30.4],
+            "category": ["A", "B", "A", "C", "B"],
+        }
+    )
 
 
 # ==================== RandomWalkGenerator Tests ====================

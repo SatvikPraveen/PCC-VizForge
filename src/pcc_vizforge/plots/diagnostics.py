@@ -41,7 +41,9 @@ NEUTRAL = TOKENS["light"]["neutral"]
 TEXT2 = TOKENS["light"]["text_secondary"]
 
 
-def _axes(ax: Axes | None, size: tuple[float, float] = (5.5, 3.8)) -> tuple[Figure, Axes]:
+def _axes(
+    ax: Axes | None, size: tuple[float, float] = (5.5, 3.8)
+) -> tuple[Figure, Axes]:
     if ax is not None:
         return ax.figure, ax  # type: ignore[return-value]
     fig, new_ax = plt.subplots(figsize=size, layout="constrained")
@@ -66,10 +68,20 @@ def msd_figure(
         color = series_color(0)
         if sem is not None:
             s = 1.96 * np.asarray(sem, dtype=float)
-            ax.fill_between(x, np.clip(y - s, 1e-12, None), y + s, color=color, alpha=0.18, linewidth=0, label="95% CI")
+            ax.fill_between(
+                x,
+                np.clip(y - s, 1e-12, None),
+                y + s,
+                color=color,
+                alpha=0.18,
+                linewidth=0,
+                label="95% CI",
+            )
         ax.plot(x, y, color=color, label=label)
         if theory is not None:
-            ax.plot(x, theory, color=NEUTRAL, linestyle="--", linewidth=1.5, label="Theory")
+            ax.plot(
+                x, theory, color=NEUTRAL, linestyle="--", linewidth=1.5, label="Theory"
+            )
         if fit is not None:
             xs = np.geomspace(*fit.x_range, 50)
             lo, hi = fit.alpha_ci
@@ -107,9 +119,32 @@ def dice_sum_figure(
         z = 1.96
         centre = (phat + z**2 / (2 * n)) / (1 + z**2 / n)
         half = z * np.sqrt(phat * (1 - phat) / n + z**2 / (4 * n**2)) / (1 + z**2 / n)
-        ax.bar(k, phat, width=0.8, color=series_color(0), label=f"Observed (n = {int(n):,})")
-        ax.errorbar(k, centre, yerr=half, fmt="none", ecolor=TEXT2, elinewidth=1, capsize=2, label="Wilson 95% CI")
-        ax.plot(k, pmf, color=series_color(1), marker="o", markersize=5, linewidth=1.5, label="Exact PMF")
+        ax.bar(
+            k,
+            phat,
+            width=0.8,
+            color=series_color(0),
+            label=f"Observed (n = {int(n):,})",
+        )
+        ax.errorbar(
+            k,
+            centre,
+            yerr=half,
+            fmt="none",
+            ecolor=TEXT2,
+            elinewidth=1,
+            capsize=2,
+            label="Wilson 95% CI",
+        )
+        ax.plot(
+            k,
+            pmf,
+            color=series_color(1),
+            marker="o",
+            markersize=5,
+            linewidth=1.5,
+            label="Exact PMF",
+        )
         title = "Distribution of the sum"
         if p_value is not None:
             title += f"  (χ² GOF p = {p_value:.3g})"
@@ -134,9 +169,19 @@ def gutenberg_richter_figure(
         centres, inc, cum = frequency_magnitude_distribution(magnitudes, bin_width)
         edges = centres - bin_width / 2
         ax.scatter(edges, cum, s=18, color=series_color(0), label="N(M ≥ m)", zorder=3)
-        ax.scatter(centres[inc > 0], inc[inc > 0], s=14, marker="s", color=NEUTRAL, label="Per-bin count", zorder=2)
+        ax.scatter(
+            centres[inc > 0],
+            inc[inc > 0],
+            s=14,
+            marker="s",
+            color=NEUTRAL,
+            label="Per-bin count",
+            zorder=2,
+        )
         if estimate is not None:
-            m = np.linspace(estimate.mc, float(np.max(magnitudes)), 50)
+            m = np.linspace(
+                estimate.mc, float(np.max(np.asarray(magnitudes, dtype=float))), 50
+            )
             lo, hi = estimate.ci
             ax.plot(
                 m,
@@ -178,12 +223,24 @@ def omori_figure(
         hi = stats.chi2.ppf(0.84, 2 * counts + 2) / 2
         yerr = np.vstack([(counts - lo) / widths, (hi - counts) / widths])
         ax.errorbar(
-            mids[keep], rate[keep], yerr=yerr[:, keep], fmt="o", color=series_color(0),
-            ecolor=TEXT2, markersize=5, elinewidth=1, label="Observed rate (Poisson 68% CI)",
+            mids[keep],
+            rate[keep],
+            yerr=yerr[:, keep],
+            fmt="o",
+            color=series_color(0),
+            ecolor=TEXT2,
+            markersize=5,
+            elinewidth=1,
+            label="Observed rate (Poisson 68% CI)",
         )
         if fit is not None:
             xs = np.geomspace(t.min(), t.max(), 100)
-            ax.plot(xs, fit.rate(xs), color=series_color(1), label=f"Omori-Utsu: p = {fit.p:.2f} ± {fit.p_stderr:.2f}, c = {fit.c:.3g}")
+            ax.plot(
+                xs,
+                fit.rate(xs),
+                color=series_color(1),
+                label=f"Omori-Utsu: p = {fit.p:.2f} ± {fit.p_stderr:.2f}, c = {fit.c:.3g}",
+            )
         ax.set_xscale("log")
         ax.set_yscale("log")
         ax.set_xlabel(f"Time since parent event ({time_unit})")
@@ -193,7 +250,13 @@ def omori_figure(
         return fig
 
 
-def ccdf_figure(x: ArrayLike, fit: PowerLawFit | None = None, *, label: str = "Empirical", ax: Axes | None = None) -> Figure:
+def ccdf_figure(
+    x: ArrayLike,
+    fit: PowerLawFit | None = None,
+    *,
+    label: str = "Empirical",
+    ax: Axes | None = None,
+) -> Figure:
     """Log-log empirical CCDF with the fitted power-law tail."""
     with publication_style():
         fig, ax = _axes(ax)
@@ -202,9 +265,16 @@ def ccdf_figure(x: ArrayLike, fit: PowerLawFit | None = None, *, label: str = "E
         if fit is not None:
             frac = fit.n_tail / fit.n_total
             xs = np.geomspace(fit.xmin, v.max(), 100)
-            ax.plot(xs, frac * fit.ccdf(xs), color=series_color(1), label=f"Power law: α = {fit.alpha:.2f} ± {fit.alpha_stderr:.2f}")
+            ax.plot(
+                xs,
+                frac * fit.ccdf(xs),
+                color=series_color(1),
+                label=f"Power law: α = {fit.alpha:.2f} ± {fit.alpha_stderr:.2f}",
+            )
             ax.axvline(fit.xmin, color=NEUTRAL, linestyle=":", linewidth=1)
-            ax.annotate(" $x_{min}$", (fit.xmin, c.max()), color=TEXT2, fontsize=9, va="top")
+            ax.annotate(
+                " $x_{min}$", (fit.xmin, c.max()), color=TEXT2, fontsize=9, va="top"
+            )
         ax.set_xscale("log")
         ax.set_yscale("log")
         ax.set_xlabel("x")
@@ -225,9 +295,23 @@ def temperature_figure(
     with publication_style():
         fig, ax = _axes(ax, (7.0, 3.6))
         t = np.asarray(t_days, dtype=float)
-        ax.scatter(t / 365.25, temperature, s=3, color=NEUTRAL, alpha=0.6, label="Daily mean", rasterized=True)
+        ax.scatter(
+            t / 365.25,
+            temperature,
+            s=3,
+            color=NEUTRAL,
+            alpha=0.6,
+            label="Daily mean",
+            rasterized=True,
+        )
         if fit is not None:
-            ax.plot(t / 365.25, fit.predict(t), color=series_color(0), linewidth=1.2, label="Harmonic fit")
+            ax.plot(
+                t / 365.25,
+                fit.predict(t),
+                color=series_color(0),
+                linewidth=1.2,
+                label="Harmonic fit",
+            )
             trend = fit.mean + fit.trend_per_unit * t
             ax.plot(
                 t / 365.25,
@@ -246,7 +330,10 @@ def temperature_figure(
 
 
 def pvalue_calibration_figure(
-    p_values: Sequence[float] | ArrayLike, *, label: str = "Test", ax: Axes | None = None
+    p_values: Sequence[float] | ArrayLike,
+    *,
+    label: str = "Test",
+    ax: Axes | None = None,
 ) -> Figure:
     """Uniform Q-Q plot of p-values with a 95 % pointwise band.
 
@@ -261,7 +348,9 @@ def pvalue_calibration_figure(
         expected = i / (n + 1)
         lo = stats.beta.ppf(0.025, i, n - i + 1)
         hi = stats.beta.ppf(0.975, i, n - i + 1)
-        ax.fill_between(expected, lo, hi, color=NEUTRAL, alpha=0.2, linewidth=0, label="95% band")
+        ax.fill_between(
+            expected, lo, hi, color=NEUTRAL, alpha=0.2, linewidth=0, label="95% band"
+        )
         ax.plot([0, 1], [0, 1], color=NEUTRAL, linestyle="--", linewidth=1)
         ax.plot(expected, p, color=series_color(0), label=label)
         ax.set_xlim(0, 1)

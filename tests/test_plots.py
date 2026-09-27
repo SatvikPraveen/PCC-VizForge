@@ -47,7 +47,11 @@ def _close_figures():
     plt.close("all")
 
 
-@pytest.mark.parametrize(("gen", "mpl_cls", "plotly_cls"), DASHBOARDS, ids=lambda c: getattr(c, "__name__", ""))
+@pytest.mark.parametrize(
+    ("gen", "mpl_cls", "plotly_cls"),
+    DASHBOARDS,
+    ids=lambda c: getattr(c, "__name__", ""),
+)
 def test_dashboards_render(gen, mpl_cls, plotly_cls, recwarn):
     data = gen().generate()
     for cls in (mpl_cls, plotly_cls):
@@ -57,10 +61,20 @@ def test_dashboards_render(gen, mpl_cls, plotly_cls, recwarn):
             assert isinstance(fig, (plt.Figure, go.Figure))
             if isinstance(fig, plt.Figure):
                 # One y-axis per panel: no twinned axes sharing an x-axis.
-                positions = [tuple(np.round(ax.get_position().bounds, 4)) for ax in fig.axes if ax.get_label() != "<colorbar>"]
-                assert len(positions) == len(set(positions)), f"{cls.__name__}.{name} has overlaid axes"
+                positions = [
+                    tuple(np.round(ax.get_position().bounds, 4))
+                    for ax in fig.axes
+                    if ax.get_label() != "<colorbar>"
+                ]
+                assert len(positions) == len(set(positions)), (
+                    f"{cls.__name__}.{name} has overlaid axes"
+                )
             else:
-                assert not any(getattr(fig.layout[k], "overlaying", None) for k in fig.layout if k.startswith("yaxis"))
+                assert not any(
+                    getattr(fig.layout[k], "overlaying", None)
+                    for k in fig.layout
+                    if k.startswith("yaxis")
+                )
 
 
 def test_matplotlib_save(tmp_path, monkeypatch):
@@ -68,7 +82,9 @@ def test_matplotlib_save(tmp_path, monkeypatch):
 
     monkeypatch.setattr(io, "IMAGE_EXPORT_DIR", tmp_path)
     plotter = P.DiceMatplotlibPlot()
-    path = plotter.save(plotter.plot(G.DiceGenerator(n_rolls=50).generate()), "dice.png")
+    path = plotter.save(
+        plotter.plot(G.DiceGenerator(n_rolls=50).generate()), "dice.png"
+    )
     assert (tmp_path / "dice.png").exists() and path.endswith("dice.png")
 
 
@@ -128,7 +144,9 @@ class TestDiagnostics:
         assert fig.axes[0].get_yscale() == "log"
 
     def test_omori(self):
-        t = seismology.omori_sample_delays(np.random.default_rng(0), 500, 0.05, 1.1, 100)
+        t = seismology.omori_sample_delays(
+            np.random.default_rng(0), 500, 0.05, 1.1, 100
+        )
         D.omori_figure(t, seismology.fit_omori(t, 100))
 
     def test_ccdf(self):
@@ -138,8 +156,14 @@ class TestDiagnostics:
     def test_temperature(self):
         w = G.WeatherGenerator(n_days=400).generate()
         t = np.arange(len(w), dtype=float)
-        fig = D.temperature_figure(t, w["temperature_avg"], timeseries.fit_harmonics(t, w["temperature_avg"].to_numpy(), n_harmonics=1))
-        assert "HAC" in " ".join(x.get_text() for x in fig.axes[0].get_legend().get_texts())
+        fig = D.temperature_figure(
+            t,
+            w["temperature_avg"],
+            timeseries.fit_harmonics(t, w["temperature_avg"].to_numpy(), n_harmonics=1),
+        )
+        assert "HAC" in " ".join(
+            x.get_text() for x in fig.axes[0].get_legend().get_texts()
+        )
 
     def test_pvalue_calibration_and_axes_composition(self):
         fig, (a, b) = plt.subplots(1, 2)

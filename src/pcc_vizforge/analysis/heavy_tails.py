@@ -106,11 +106,15 @@ def _alpha_discrete(tail: NDArray[np.float64], xmin: float) -> float:
 
     # CSN eq. (3.7) approximation as a starting bracket.
     guess = 1.0 + n / np.sum(np.log(tail / (xmin - 0.5))) if xmin > 0.5 else 2.5
-    res = optimize.minimize_scalar(nll, bounds=(1.0001, max(guess * 2, 6.0)), method="bounded")
+    res = optimize.minimize_scalar(
+        nll, bounds=(1.0001, max(guess * 2, 6.0)), method="bounded"
+    )
     return float(res.x)
 
 
-def _ks_distance(tail: NDArray[np.float64], alpha: float, xmin: float, discrete: bool) -> float:
+def _ks_distance(
+    tail: NDArray[np.float64], alpha: float, xmin: float, discrete: bool
+) -> float:
     xs = np.sort(tail)
     n = xs.size
     if discrete:
@@ -196,7 +200,11 @@ def fit_power_law(
 # Sampling & goodness of fit
 # --------------------------------------------------------------------------- #
 def sample_power_law(
-    rng: np.random.Generator, size: int, alpha: float, xmin: float, discrete: bool = False
+    rng: np.random.Generator,
+    size: int,
+    alpha: float,
+    xmin: float,
+    discrete: bool = False,
 ) -> NDArray[np.float64]:
     """Draw from a continuous or discrete power law with exponent ``alpha``."""
     if alpha <= 1 or xmin <= 0:
@@ -246,7 +254,9 @@ def power_law_gof(
     for _ in range(n_bootstrap):
         n_tail = rng.binomial(n, p_tail)
         synth_tail = sample_power_law(rng, n_tail, fit.alpha, fit.xmin, fit.discrete)
-        synth_body = rng.choice(body, n - n_tail, replace=True) if body.size else np.array([])
+        synth_body = (
+            rng.choice(body, n - n_tail, replace=True) if body.size else np.array([])
+        )
         synth = np.concatenate([synth_body, synth_tail])
         try:
             d = fit_power_law(synth, discrete=fit.discrete).ks_distance
@@ -259,20 +269,29 @@ def power_law_gof(
         fit.ks_distance,
         float(p),
         None,
-        {"n_bootstrap": n_bootstrap, "plausible": p > 0.1, "alpha": fit.alpha, "xmin": fit.xmin},
+        {
+            "n_bootstrap": n_bootstrap,
+            "plausible": p > 0.1,
+            "alpha": fit.alpha,
+            "xmin": fit.xmin,
+        },
     )
 
 
 # --------------------------------------------------------------------------- #
 # Model comparison
 # --------------------------------------------------------------------------- #
-def _loglik_power_law(tail: NDArray[np.float64], fit: PowerLawFit) -> NDArray[np.float64]:
+def _loglik_power_law(
+    tail: NDArray[np.float64], fit: PowerLawFit
+) -> NDArray[np.float64]:
     if fit.discrete:
         return -fit.alpha * np.log(tail) - np.log(special.zeta(fit.alpha, fit.xmin))
     return np.log((fit.alpha - 1) / fit.xmin) - fit.alpha * np.log(tail / fit.xmin)
 
 
-def _loglik_exponential(tail: NDArray[np.float64], xmin: float, discrete: bool) -> NDArray[np.float64]:
+def _loglik_exponential(
+    tail: NDArray[np.float64], xmin: float, discrete: bool
+) -> NDArray[np.float64]:
     excess = tail - xmin
     if discrete:
         # Geometric on {xmin, xmin+1, ...}: P(k) = (1-q) q^(k-xmin), MLE q = m/(1+m)
@@ -283,7 +302,9 @@ def _loglik_exponential(tail: NDArray[np.float64], xmin: float, discrete: bool) 
     return np.log(lam) - lam * excess
 
 
-def _loglik_lognormal(tail: NDArray[np.float64], xmin: float, discrete: bool) -> NDArray[np.float64]:
+def _loglik_lognormal(
+    tail: NDArray[np.float64], xmin: float, discrete: bool
+) -> NDArray[np.float64]:
     logs = np.log(tail)
 
     def ll(theta: NDArray[np.float64]) -> NDArray[np.float64]:
@@ -315,7 +336,9 @@ def _loglik_lognormal(tail: NDArray[np.float64], xmin: float, discrete: bool) ->
     lo_mu, hi_mu = float(np.log(xmin)) - 30.0, float(logs.max()) + 5.0
     bounds = [(lo_mu, hi_mu), (np.log(1e-3), np.log(20.0))]
     x0 = np.array([logs.mean(), np.log(min(max(logs.std(), 1e-3), 19.0))])
-    res = optimize.minimize(objective, x0, method="Nelder-Mead", bounds=bounds, options={"maxiter": 4000})
+    res = optimize.minimize(
+        objective, x0, method="Nelder-Mead", bounds=bounds, options={"maxiter": 4000}
+    )
     with np.errstate(all="ignore"):
         return ll(res.x)
 
@@ -354,7 +377,11 @@ def compare_distributions(
         float(z),
         p,
         None,
-        {"log_likelihood_ratio": R, "favoured": favoured if p < 0.1 else "inconclusive", "n_tail": n},
+        {
+            "log_likelihood_ratio": R,
+            "favoured": favoured if p < 0.1 else "inconclusive",
+            "n_tail": n,
+        },
     )
 
 

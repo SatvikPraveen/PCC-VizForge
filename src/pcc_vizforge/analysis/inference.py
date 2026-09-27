@@ -155,7 +155,9 @@ def chi_square_gof(
     obs = np.asarray(observed, dtype=float).ravel()
     probs = np.asarray(expected_probs, dtype=float).ravel()
     if obs.shape != probs.shape:
-        raise InvalidParameterError("observed and expected_probs must have equal length")
+        raise InvalidParameterError(
+            "observed and expected_probs must have equal length"
+        )
     if np.any(obs < 0) or np.any(probs < 0):
         raise InvalidParameterError("counts and probabilities must be non-negative")
     if probs.sum() <= 0:
@@ -195,7 +197,9 @@ def chi_square_gof(
             "n_cells": k,
             "pooled_groups": groups,
             "min_expected": float(expected.min()),
-            "cramers_v": float(np.sqrt(statistic / (n * max(k - 1, 1)))) if n > 0 else 0.0,
+            "cramers_v": float(np.sqrt(statistic / (n * max(k - 1, 1))))
+            if n > 0
+            else 0.0,
         },
     )
 
@@ -203,7 +207,9 @@ def chi_square_gof(
 # --------------------------------------------------------------------------- #
 # Randomness / independence
 # --------------------------------------------------------------------------- #
-def runs_test(x: ArrayLike, cutoff: float | Literal["median", "mean"] = "median") -> TestResult:
+def runs_test(
+    x: ArrayLike, cutoff: float | Literal["median", "mean"] = "median"
+) -> TestResult:
     """Wald-Wolfowitz runs test for randomness of a sequence.
 
     Observations equal to the cutoff are discarded (standard practice). Under
@@ -220,7 +226,9 @@ def runs_test(x: ArrayLike, cutoff: float | Literal["median", "mean"] = "median"
     n1 = int(signs.sum())
     n2 = int(signs.size - n1)
     if n1 == 0 or n2 == 0:
-        raise InvalidParameterError("runs_test needs observations on both sides of the cutoff")
+        raise InvalidParameterError(
+            "runs_test needs observations on both sides of the cutoff"
+        )
     runs = int(1 + np.count_nonzero(signs[1:] != signs[:-1]))
     n = n1 + n2
     mu = 2.0 * n1 * n2 / n + 1.0
@@ -266,7 +274,9 @@ def ljung_box(x: ArrayLike, lags: int = 10, ddof: int = 0) -> TestResult:
     r = autocorrelation(arr, lags)[1:]
     q = float(n * (n + 2) * np.sum(r**2 / (n - np.arange(1, lags + 1))))
     dof = lags - ddof
-    return TestResult("ljung_box", q, float(stats.chi2.sf(q, dof)), float(dof), {"lags": lags})
+    return TestResult(
+        "ljung_box", q, float(stats.chi2.sf(q, dof)), float(dof), {"lags": lags}
+    )
 
 
 # --------------------------------------------------------------------------- #
@@ -302,7 +312,9 @@ def bootstrap_ci(
         vectorized=True,
     )
     low, high = float(res.confidence_interval.low), float(res.confidence_interval.high)
-    return ConfidenceInterval(float(statistic(arr, axis=-1)), low, high, confidence, method)
+    return ConfidenceInterval(
+        float(statistic(arr, axis=-1)), low, high, confidence, method
+    )
 
 
 # --------------------------------------------------------------------------- #

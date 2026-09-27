@@ -64,20 +64,31 @@ set_option = click.option(
     help="Override a config value (repeatable), e.g. --set data_generation.n_steps=500",
 )
 config_option = click.option(
-    "--config", "config", type=click.Path(dir_okay=False), help="YAML config file (defaults to the bundled one)."
+    "--config",
+    "config",
+    type=click.Path(dir_okay=False),
+    help="YAML config file (defaults to the bundled one).",
 )
-seed_option = click.option("--seed", type=click.IntRange(min=0), help="RNG seed (overrides the config).")
+seed_option = click.option(
+    "--seed", type=click.IntRange(min=0), help="RNG seed (overrides the config)."
+)
 
 
 @click.group()
 @click.version_option(__version__, package_name="pcc-vizforge")
 @click.option(
     "--log-level",
-    type=click.Choice(["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"], case_sensitive=False),
+    type=click.Choice(
+        ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"], case_sensitive=False
+    ),
     default="WARNING",
     show_default=True,
 )
-@click.option("--log-file", type=click.Path(dir_okay=False), help="Also write DEBUG logs to this file.")
+@click.option(
+    "--log-file",
+    type=click.Path(dir_okay=False),
+    help="Also write DEBUG logs to this file.",
+)
 def main(log_level: str, log_file: str | None) -> None:
     """PCC-VizForge: reproducible stochastic simulation, inference and visualisation."""
     setup_logging(level=log_level, log_file=log_file)
@@ -91,7 +102,13 @@ def main(log_level: str, log_file: str | None) -> None:
 @config_option
 @set_option
 @seed_option
-@click.option("--out", "output_dir", default="runs", show_default=True, type=click.Path(file_okay=False))
+@click.option(
+    "--out",
+    "output_dir",
+    default="runs",
+    show_default=True,
+    type=click.Path(file_okay=False),
+)
 @click.option("--figures/--no-figures", default=True, show_default=True)
 @click.option(
     "--format",
@@ -102,7 +119,9 @@ def main(log_level: str, log_file: str | None) -> None:
     show_default=True,
     help="Figure format (repeatable).",
 )
-@click.option("--name", "run_name", help="Run folder name (default: <domain>-<timestamp>-<id>).")
+@click.option(
+    "--name", "run_name", help="Run folder name (default: <domain>-<timestamp>-<id>)."
+)
 @handle_error
 def run(
     domain: str,
@@ -127,7 +146,9 @@ def run(
         formats=formats,
         run_name=run_name,
     )
-    click.echo(f"Run {result.manifest.run_id} (seed {result.manifest.seed}) -> {result.run_dir}")
+    click.echo(
+        f"Run {result.manifest.run_id} (seed {result.manifest.seed}) -> {result.run_dir}"
+    )
     click.echo(f"  data: {len(result.data):,} rows; figures: {len(result.figures)}")
 
 
@@ -140,19 +161,41 @@ def verify(run_dir: str) -> None:
 
     report = verify_run(run_dir)
     tampered = [k for k, ok in report["integrity"].items() if not ok]
-    status = click.style("REPRODUCED", fg="green") if report["reproduced"] else click.style("MISMATCH", fg="red")
-    click.echo(f"{report['domain']} run {report['run_id']} (seed {report['seed']}): {status}")
+    status = (
+        click.style("REPRODUCED", fg="green")
+        if report["reproduced"]
+        else click.style("MISMATCH", fg="red")
+    )
+    click.echo(
+        f"{report['domain']} run {report['run_id']} (seed {report['seed']}): {status}"
+    )
     if tampered:
-        click.echo(click.style(f"  modified or missing files: {', '.join(tampered)}", fg="yellow"))
+        click.echo(
+            click.style(
+                f"  modified or missing files: {', '.join(tampered)}", fg="yellow"
+            )
+        )
     if not report["reproduced"] or tampered:
         raise SystemExit(1)
 
 
 @main.command()
-@click.argument("study", type=click.Choice(["all", "b_value", "msd_exponent", "power_law", "dice_gof", "trend_hac"]))
-@click.option("--replicates", default=200, show_default=True, type=click.IntRange(min=2))
+@click.argument(
+    "study",
+    type=click.Choice(
+        ["all", "b_value", "msd_exponent", "power_law", "dice_gof", "trend_hac"]
+    ),
+)
+@click.option(
+    "--replicates", default=200, show_default=True, type=click.IntRange(min=2)
+)
 @click.option("--seed", default=20240101, show_default=True, type=click.IntRange(min=0))
-@click.option("--out", "output_dir", type=click.Path(file_okay=False), help="Write CSV/JSON results here.")
+@click.option(
+    "--out",
+    "output_dir",
+    type=click.Path(file_okay=False),
+    help="Write CSV/JSON results here.",
+)
 @handle_error
 def validate(study: str, replicates: int, seed: int, output_dir: str | None) -> None:
     """Monte Carlo validation of estimators (bias, RMSE, CI coverage, test size)."""
@@ -162,13 +205,17 @@ def validate(study: str, replicates: int, seed: int, output_dir: str | None) -> 
     for name in names:
         result = run_study(name, n_replicates=replicates, seed=seed)
         click.echo(click.style(f"\n{name}: {result.description}", bold=True))
-        click.echo(result.summary.to_string(index=False, float_format=lambda v: f"{v:.4g}"))
+        click.echo(
+            result.summary.to_string(index=False, float_format=lambda v: f"{v:.4g}")
+        )
         if output_dir:
             out = Path(output_dir)
             out.mkdir(parents=True, exist_ok=True)
             result.replicates.to_csv(out / f"{name}_replicates.csv", index=False)
             result.summary.to_csv(out / f"{name}_summary.csv", index=False)
-            (out / f"{name}.json").write_text(json.dumps(study_to_dict(result), indent=2, default=str) + "\n")
+            (out / f"{name}.json").write_text(
+                json.dumps(study_to_dict(result), indent=2, default=str) + "\n"
+            )
 
 
 # --------------------------------------------------------------------------- #
@@ -197,14 +244,33 @@ def _render_dashboard(
     else:
         plotter = getattr(plots, plotly_name)()
         fig = plotter.plot(data)
-        path = plotter.save(fig, filename) if export_type == "html" else plotter.save_image(fig, filename)
+        path = (
+            plotter.save(fig, filename)
+            if export_type == "html"
+            else plotter.save_image(fig, filename)
+        )
     click.echo(f"✓ {domain}: {len(data):,} rows (seed {gen.last_seed}) -> {path}")
 
 
 dashboard_options = [
-    click.option("--library", type=click.Choice(["matplotlib", "plotly"]), default="matplotlib", show_default=True),
-    click.option("--export-type", type=click.Choice(["image", "html"]), default="image", show_default=True),
-    click.option("--save/--no-save", default=False, show_default=True, help="Also save the generated data as CSV."),
+    click.option(
+        "--library",
+        type=click.Choice(["matplotlib", "plotly"]),
+        default="matplotlib",
+        show_default=True,
+    ),
+    click.option(
+        "--export-type",
+        type=click.Choice(["image", "html"]),
+        default="image",
+        show_default=True,
+    ),
+    click.option(
+        "--save/--no-save",
+        default=False,
+        show_default=True,
+        help="Also save the generated data as CSV.",
+    ),
     click.option("--filename", help="Output file name."),
 ]
 
@@ -240,10 +306,16 @@ def dashboard(
 def _legacy_command(domain: str, name: str, hidden: bool) -> None:
     """Register a per-domain alias of ``dashboard`` (kept for backwards compatibility)."""
 
-    @main.command(name=name, hidden=hidden, help=f"Render the {domain} dashboard (alias of `dashboard {domain}`).")
+    @main.command(
+        name=name,
+        hidden=hidden,
+        help=f"Render the {domain} dashboard (alias of `dashboard {domain}`).",
+    )
     @_with_options(dashboard_options)
     @handle_error
-    def command(library: str, export_type: str, save: bool, filename: str | None) -> None:
+    def command(
+        library: str, export_type: str, save: bool, filename: str | None
+    ) -> None:
         _render_dashboard(domain, library, export_type, save, filename)
 
 
@@ -254,7 +326,12 @@ for _domain in DOMAIN_NAMES:
 
 
 @main.command()
-@click.option("--library", type=click.Choice(["matplotlib", "plotly"]), default="matplotlib", show_default=True)
+@click.option(
+    "--library",
+    type=click.Choice(["matplotlib", "plotly"]),
+    default="matplotlib",
+    show_default=True,
+)
 @handle_error
 def demo(library: str) -> None:
     """Render every dashboard with default settings."""

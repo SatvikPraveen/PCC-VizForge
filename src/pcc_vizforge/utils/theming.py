@@ -3,10 +3,10 @@
 from __future__ import annotations
 
 import logging
-from typing import Any
+from typing import Any, cast
 
-import matplotlib as mpl
 import matplotlib.pyplot as plt
+from cycler import cycler
 from matplotlib.axes import Axes
 from matplotlib.colors import LinearSegmentedColormap
 from matplotlib.figure import Figure
@@ -59,13 +59,13 @@ def get_color_palette(name: str = "default", n_colors: int | None = None) -> lis
 def apply_style(style_name: str = "clean") -> None:
     """Apply a named Matplotlib style globally."""
     if style_name in MATPLOTLIB_STYLES:
-        plt.rcParams.update(MATPLOTLIB_STYLES[style_name])
+        plt.rcParams.update(cast(Any, MATPLOTLIB_STYLES[style_name]))
         return
     try:
         plt.style.use(style_name)
     except OSError:
         logger.warning("Style %r not found; using 'clean'", style_name)
-        plt.rcParams.update(MATPLOTLIB_STYLES["clean"])
+        plt.rcParams.update(cast(Any, MATPLOTLIB_STYLES["clean"]))
 
 
 def get_matplotlib_style(style_name: str = "clean") -> dict[str, Any]:
@@ -78,17 +78,21 @@ def get_plotly_template(template_name: str = "clean") -> str:
     return PLOTLY_TEMPLATES.get(template_name, "pcc")
 
 
-def create_custom_colormap(colors: list[str], name: str = "custom") -> LinearSegmentedColormap:
+def create_custom_colormap(
+    colors: list[str], name: str = "custom"
+) -> LinearSegmentedColormap:
     """Linear colormap through ``colors``."""
     return LinearSegmentedColormap.from_list(name, colors)
 
 
 def setup_figure_style(
-    figsize: tuple[float, float] = (12, 8), style: str = "clean", palette: str = "default"
+    figsize: tuple[float, float] = (12, 8),
+    style: str = "clean",
+    palette: str = "default",
 ) -> Figure:
     """Apply ``style`` and create a figure using ``palette`` as the colour cycle."""
     apply_style(style)
-    plt.rcParams["axes.prop_cycle"] = mpl.cycler(color=get_color_palette(palette))
+    plt.rcParams["axes.prop_cycle"] = cycler(color=get_color_palette(palette))
     return plt.figure(figsize=figsize)
 
 
@@ -105,10 +109,21 @@ def format_axis_labels(
 
 
 def add_watermark(
-    ax: Axes, text: str = "PCC-VizForge", position: tuple[float, float] = (0.99, 0.01), alpha: float = 0.3
+    ax: Axes,
+    text: str = "PCC-VizForge",
+    position: tuple[float, float] = (0.99, 0.01),
+    alpha: float = 0.3,
 ) -> None:
     """Add a small attribution mark (not used by the built-in figures)."""
     ax.text(
-        position[0], position[1], text, transform=ax.transAxes, fontsize=7, alpha=alpha,
-        ha="right", va="bottom", style="italic", color="gray",
+        position[0],
+        position[1],
+        text,
+        transform=ax.transAxes,
+        fontsize=7,
+        alpha=alpha,
+        ha="right",
+        va="bottom",
+        style="italic",
+        color="gray",
     )

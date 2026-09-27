@@ -102,19 +102,27 @@ class RandomWalkParams(GeneratorParams):
         if not self.step_size > 0:
             raise InvalidParameterError(f"step_size must be > 0, got {self.step_size}")
         if self.model not in WALK_MODELS:
-            raise InvalidParameterError(f"model must be one of {WALK_MODELS}, got {self.model!r}")
+            raise InvalidParameterError(
+                f"model must be one of {WALK_MODELS}, got {self.model!r}"
+            )
         if not 0 < self.hurst < 1:
             raise InvalidParameterError(f"hurst must be in (0, 1), got {self.hurst}")
         if not 0 < self.levy_alpha <= 2:
-            raise InvalidParameterError(f"levy_alpha must be in (0, 2], got {self.levy_alpha}")
+            raise InvalidParameterError(
+                f"levy_alpha must be in (0, 2], got {self.levy_alpha}"
+            )
         if not -1 < self.persistence < 1:
-            raise InvalidParameterError(f"persistence must be in (-1, 1), got {self.persistence}")
+            raise InvalidParameterError(
+                f"persistence must be in (-1, 1), got {self.persistence}"
+            )
 
 
 # --------------------------------------------------------------------------- #
 # Increment samplers (pure functions; shape = (n_walks, n_steps, d))
 # --------------------------------------------------------------------------- #
-def _unit_vectors(rng: np.random.Generator, shape: tuple[int, int], d: int) -> NDArray[np.float64]:
+def _unit_vectors(
+    rng: np.random.Generator, shape: tuple[int, int], d: int
+) -> NDArray[np.float64]:
     """Isotropic random unit vectors (±1 in one dimension)."""
     if d == 1:
         return rng.choice(np.array([-1.0, 1.0]), size=(*shape, 1))
@@ -146,9 +154,16 @@ def fractional_gaussian_noise(
     return y.real[:, :n]
 
 
-def simulate_increments(params: RandomWalkParams, rng: np.random.Generator) -> NDArray[np.float64]:
+def simulate_increments(
+    params: RandomWalkParams, rng: np.random.Generator
+) -> NDArray[np.float64]:
     """Draw displacement increments of shape ``(n_walks, n_steps, dimensions)``."""
-    w, n, d, a = params.n_walks, params.n_steps, params.dimensions, float(params.step_size)
+    w, n, d, a = (
+        params.n_walks,
+        params.n_steps,
+        params.dimensions,
+        float(params.step_size),
+    )
     model = params.model
 
     if model == "lattice":
@@ -184,7 +199,9 @@ def simulate_increments(params: RandomWalkParams, rng: np.random.Generator) -> N
     raise InvalidParameterError(f"Unknown model {model!r}")  # pragma: no cover
 
 
-def theoretical_msd(params: RandomWalkParams, t: NDArray[np.float64] | Sequence[float]) -> NDArray[np.float64]:
+def theoretical_msd(
+    params: RandomWalkParams, t: NDArray[np.float64] | Sequence[float]
+) -> NDArray[np.float64]:
     """Exact ensemble MSD :math:`\\langle |r(t)|^2 \\rangle` for the model.
 
     Returns ``inf`` for Lévy flights (α ≤ 2), whose MSD diverges.
@@ -197,7 +214,9 @@ def theoretical_msd(params: RandomWalkParams, t: NDArray[np.float64] | Sequence[
         return a2 * t ** (2 * params.hurst)
     if params.model == "correlated":
         rho = params.persistence
-        return a2 * (t * (1 + rho) / (1 - rho) - 2 * rho * (1 - rho**t) / (1 - rho) ** 2)
+        return a2 * (
+            t * (1 + rho) / (1 - rho) - 2 * rho * (1 - rho**t) / (1 - rho) ** 2
+        )
     if params.model == "levy":
         # Pareto lengths with alpha <= 2 have an infinite second moment.
         return np.full_like(t, np.inf)
@@ -236,7 +255,9 @@ class RandomWalkGenerator(BaseGenerator[RandomWalkParams]):
         params = params or self.params
         return np.cumsum(simulate_increments(params, rng), axis=1)
 
-    def _simulate(self, params: RandomWalkParams, rng: np.random.Generator) -> pd.DataFrame:
+    def _simulate(
+        self, params: RandomWalkParams, rng: np.random.Generator
+    ) -> pd.DataFrame:
         positions = self.simulate_positions(rng, params)
         return positions_to_frame(positions)
 
@@ -258,11 +279,17 @@ class RandomWalkGenerator(BaseGenerator[RandomWalkParams]):
                 try:
                     df = self.generate()
                 except Exception as exc:
-                    raise DataGenerationError(f"Failed to generate scenario {name}: {exc}") from exc
+                    raise DataGenerationError(
+                        f"Failed to generate scenario {name}: {exc}"
+                    ) from exc
                 df["scenario"] = name
                 results[name] = df
                 if save_to_file:
-                    save_data(df, get_data_directory(self.domain) / f"random_walk_{name}.csv", "csv")
+                    save_data(
+                        df,
+                        get_data_directory(self.domain) / f"random_walk_{name}.csv",
+                        "csv",
+                    )
         finally:
             self.data_config.clear()
             self.data_config.update(original)
@@ -273,7 +300,9 @@ class RandomWalkGenerator(BaseGenerator[RandomWalkParams]):
         if data.empty:
             raise DataShapeError("Cannot calculate statistics on empty DataFrame")
         if "position" not in data.columns or "walk_id" not in data.columns:
-            raise DataShapeError("DataFrame must contain 'position' and 'walk_id' columns")
+            raise DataShapeError(
+                "DataFrame must contain 'position' and 'walk_id' columns"
+            )
         g = data.groupby("walk_id")
         final = g["position"].last()
         max_pos, min_pos = g["position"].max(), g["position"].min()
@@ -287,13 +316,17 @@ class RandomWalkGenerator(BaseGenerator[RandomWalkParams]):
             "mean_min_excursion": float(min_pos.mean()),
             "mean_total_excursion": float((max_pos - min_pos).mean()),
             "mean_squared_displacement": float((disp**2).mean()),
-            "mean_step_size": float(data["step_length"].mean()) if "step_length" in data else float("nan"),
+            "mean_step_size": float(data["step_length"].mean())
+            if "step_length" in data
+            else float("nan"),
             "total_steps": len(data),
             "n_walks": int(data["walk_id"].nunique()),
         }
         return stats
 
-    def get_walk_summary(self, data: pd.DataFrame, walk_id: int) -> dict[str, float | int]:
+    def get_walk_summary(
+        self, data: pd.DataFrame, walk_id: int
+    ) -> dict[str, float | int]:
         """Summary statistics for a single walk."""
         walk = data[data["walk_id"] == walk_id]
         if walk.empty:
@@ -313,7 +346,9 @@ class RandomWalkGenerator(BaseGenerator[RandomWalkParams]):
 def positions_to_frame(positions: NDArray[np.float64]) -> pd.DataFrame:
     """Convert a ``(n_walks, n_steps, d)`` array into the tidy long format."""
     if positions.ndim != 3 or positions.shape[-1] not in VALID_DIMENSIONS:
-        raise DataShapeError(f"positions must have shape (walks, steps, 1..3), got {positions.shape}")
+        raise DataShapeError(
+            f"positions must have shape (walks, steps, 1..3), got {positions.shape}"
+        )
     w, n, d = positions.shape
     steps = np.diff(positions, axis=1, prepend=np.zeros((w, 1, d)))
     step_length = np.linalg.norm(steps, axis=-1)

@@ -20,7 +20,11 @@ from pcc_vizforge.experiments import DOMAINS, run_experiment, run_study, verify_
 from pcc_vizforge.experiments.validation import STUDIES
 
 SMALL = {
-    "random_walk": ["data_generation.n_walks=20", "data_generation.n_steps=200", "data_generation.model=fbm"],
+    "random_walk": [
+        "data_generation.n_walks=20",
+        "data_generation.n_steps=200",
+        "data_generation.model=fbm",
+    ],
     "dice": ["data_generation.n_rolls=300"],
     "weather": ["data_generation.n_days=400"],
     "quakes": ["data_generation.n_earthquakes=800"],
@@ -42,7 +46,13 @@ def redirect_exports(tmp_path, monkeypatch):
 
 @pytest.mark.parametrize("domain", sorted(DOMAINS))
 def test_run_and_verify_every_domain(domain, tmp_path):
-    result = run_experiment(domain, overrides=SMALL[domain], seed=11, output_dir=tmp_path, formats=("png", "pdf"))
+    result = run_experiment(
+        domain,
+        overrides=SMALL[domain],
+        seed=11,
+        output_dir=tmp_path,
+        formats=("png", "pdf"),
+    )
     run_dir = result.run_dir
     for name in ("config.yaml", "data.csv", "metrics.json", "manifest.json"):
         assert (run_dir / name).exists()
@@ -58,7 +68,9 @@ def test_run_and_verify_every_domain(domain, tmp_path):
 
 
 def test_verify_detects_tampering(tmp_path):
-    r = run_experiment("dice", overrides=SMALL["dice"], seed=1, output_dir=tmp_path, figures=False)
+    r = run_experiment(
+        "dice", overrides=SMALL["dice"], seed=1, output_dir=tmp_path, figures=False
+    )
     (r.run_dir / "data.csv").write_text("roll_id\n0\n")
     report = verify_run(r.run_dir)
     assert report["reproduced"]  # regeneration still matches the recorded hash...
@@ -66,13 +78,24 @@ def test_verify_detects_tampering(tmp_path):
 
 
 def test_run_records_fresh_seed_when_unseeded(tmp_path):
-    r = run_experiment("dice", config={"data_generation": {"n_rolls": 50}}, output_dir=tmp_path, figures=False)
+    r = run_experiment(
+        "dice",
+        config={"data_generation": {"n_rolls": 50}},
+        output_dir=tmp_path,
+        figures=False,
+    )
     assert isinstance(r.manifest.seed, int)
     assert verify_run(r.run_dir)["reproduced"]
 
 
 def test_run_metrics_content(tmp_path):
-    r = run_experiment("random_walk", overrides=[*SMALL["random_walk"], "data_generation.hurst=0.3"], seed=2, output_dir=tmp_path, figures=False)
+    r = run_experiment(
+        "random_walk",
+        overrides=[*SMALL["random_walk"], "data_generation.hurst=0.3"],
+        seed=2,
+        output_dir=tmp_path,
+        figures=False,
+    )
     m = r.metrics
     assert m["theoretical_exponent"] == pytest.approx(0.6)
     lo, hi = m["msd_exponent"]["alpha_ci"]
@@ -106,7 +129,22 @@ class TestCli:
 
     def test_run_verify_roundtrip(self, tmp_path):
         runner = CliRunner()
-        r = runner.invoke(main, ["run", "dice", "--seed", "4", "--out", str(tmp_path), "--name", "d", "--set", "data_generation.n_rolls=100", "--no-figures"])
+        r = runner.invoke(
+            main,
+            [
+                "run",
+                "dice",
+                "--seed",
+                "4",
+                "--out",
+                str(tmp_path),
+                "--name",
+                "d",
+                "--set",
+                "data_generation.n_rolls=100",
+                "--no-figures",
+            ],
+        )
         assert r.exit_code == 0, r.output
         r = runner.invoke(main, ["verify", str(tmp_path / "d")])
         assert r.exit_code == 0 and "REPRODUCED" in r.output
@@ -115,15 +153,37 @@ class TestCli:
         assert r.exit_code == 1 and "metrics.json" in r.output
 
     def test_bad_override_is_clean_error(self, tmp_path):
-        r = CliRunner().invoke(main, ["run", "dice", "--out", str(tmp_path), "--set", "data_generation.n_dice=0"])
+        r = CliRunner().invoke(
+            main,
+            [
+                "run",
+                "dice",
+                "--out",
+                str(tmp_path),
+                "--set",
+                "data_generation.n_dice=0",
+            ],
+        )
         assert r.exit_code == 1 and "Error:" in r.output
 
     def test_validate_writes_outputs(self, tmp_path):
-        r = CliRunner().invoke(main, ["validate", "b_value", "--replicates", "4", "--out", str(tmp_path)])
+        r = CliRunner().invoke(
+            main, ["validate", "b_value", "--replicates", "4", "--out", str(tmp_path)]
+        )
         assert r.exit_code == 0, r.output
-        assert (tmp_path / "b_value_summary.csv").exists() and (tmp_path / "b_value.json").exists()
+        assert (tmp_path / "b_value_summary.csv").exists() and (
+            tmp_path / "b_value.json"
+        ).exists()
 
-    @pytest.mark.parametrize("args", [["dashboard", "dice"], ["dashboard", "weather", "--library", "plotly", "--export-type", "html"], ["random-walk"], ["random_walk"]])
+    @pytest.mark.parametrize(
+        "args",
+        [
+            ["dashboard", "dice"],
+            ["dashboard", "weather", "--library", "plotly", "--export-type", "html"],
+            ["random-walk"],
+            ["random_walk"],
+        ],
+    )
     def test_dashboards(self, args, redirect_exports):
         r = CliRunner().invoke(main, args)
         assert r.exit_code == 0, r.output
@@ -134,7 +194,9 @@ class TestCli:
         assert r.exit_code != 0
 
     def test_show_and_list_configs(self):
-        r = CliRunner().invoke(main, ["show-config", "dice", "--set", "data_generation.n_dice=4"])
+        r = CliRunner().invoke(
+            main, ["show-config", "dice", "--set", "data_generation.n_dice=4"]
+        )
         assert yaml.safe_load(r.output)["data_generation"]["n_dice"] == 4
         assert "quakes" in CliRunner().invoke(main, ["list-configs"]).output
 

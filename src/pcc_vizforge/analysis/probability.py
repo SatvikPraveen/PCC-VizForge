@@ -84,7 +84,9 @@ def sum_counts_fair(n_dice: int, sides: int) -> list[int]:
     return counts
 
 
-def die_moments(sides: int, weights: Sequence[float] | None = None) -> tuple[float, float]:
+def die_moments(
+    sides: int, weights: Sequence[float] | None = None
+) -> tuple[float, float]:
     """Mean and variance of a single die (faces 1..sides)."""
     p = face_pmf(sides, weights)
     faces = np.arange(1, sides + 1)

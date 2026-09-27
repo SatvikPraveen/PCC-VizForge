@@ -123,7 +123,9 @@ class TestLjungBox:
         assert not ljung_box(make_rng(11).standard_normal(1000), 10).reject(0.001)
 
     def test_random_walk_rejects(self):
-        assert ljung_box(np.cumsum(make_rng(11).standard_normal(1000)), 10).reject(1e-10)
+        assert ljung_box(np.cumsum(make_rng(11).standard_normal(1000)), 10).reject(
+            1e-10
+        )
 
 
 class TestBootstrap:
@@ -154,15 +156,21 @@ class TestAdjustPvalues:
     P = np.array([0.01, 0.04, 0.03, 0.005])
 
     def test_bonferroni(self):
-        np.testing.assert_allclose(adjust_pvalues(self.P, "bonferroni"), [0.04, 0.16, 0.12, 0.02])
+        np.testing.assert_allclose(
+            adjust_pvalues(self.P, "bonferroni"), [0.04, 0.16, 0.12, 0.02]
+        )
 
     def test_holm(self):
         # sorted: .005*4=.02, .01*3=.03, .03*2=.06, .04*1=.04 -> monotone .06
-        np.testing.assert_allclose(adjust_pvalues(self.P, "holm"), [0.03, 0.06, 0.06, 0.02])
+        np.testing.assert_allclose(
+            adjust_pvalues(self.P, "holm"), [0.03, 0.06, 0.06, 0.02]
+        )
 
     def test_bh(self):
         # sorted: .005*4/1=.02, .01*4/2=.02, .03*4/3=.04, .04*4/4=.04
-        np.testing.assert_allclose(adjust_pvalues(self.P, "bh"), [0.02, 0.04, 0.04, 0.02])
+        np.testing.assert_allclose(
+            adjust_pvalues(self.P, "bh"), [0.02, 0.04, 0.04, 0.02]
+        )
 
     def test_mapping_input(self):
         out = adjust_pvalues({"a": 0.5, "b": 0.01}, "bonferroni")

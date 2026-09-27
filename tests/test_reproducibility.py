@@ -74,7 +74,9 @@ class TestProvenance:
         assert config_hash({"a": 1}) != config_hash({"a": 2})
 
     def test_canonical_json_handles_numpy(self):
-        assert canonical_json({"x": np.int64(3), "y": np.arange(2)}) == '{"x":3,"y":[0,1]}'
+        assert (
+            canonical_json({"x": np.int64(3), "y": np.arange(2)}) == '{"x":3,"y":[0,1]}'
+        )
 
     def test_environment_snapshot(self):
         env = collect_environment()

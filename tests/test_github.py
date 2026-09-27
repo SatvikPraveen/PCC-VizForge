@@ -77,8 +77,18 @@ class TestFitting:
         rng = make_rng(7)
         pl = sample_power_law(rng, 3000, 2.2, 1.0)
         exp = rng.exponential(3.0, 3000) + 1.0
-        assert compare_distributions(pl, fit_power_law(pl, xmin=1.0), "exponential").details["favoured"] == "power_law"
-        assert compare_distributions(exp, fit_power_law(exp, xmin=1.0), "exponential").details["favoured"] == "exponential"
+        assert (
+            compare_distributions(
+                pl, fit_power_law(pl, xmin=1.0), "exponential"
+            ).details["favoured"]
+            == "power_law"
+        )
+        assert (
+            compare_distributions(
+                exp, fit_power_law(exp, xmin=1.0), "exponential"
+            ).details["favoured"]
+            == "exponential"
+        )
 
     def test_vuong_discrete_lognormal_vs_power_law(self):
         x = np.round(make_rng(8).lognormal(1.0, 0.6, 5000))
@@ -138,8 +148,12 @@ class TestGitHubGenerator:
         assert weekday > weekend
 
     def test_language_weights(self):
-        df = GitHubGenerator(n_repositories=2000, languages=["A", "B"], language_weights=[3, 1]).generate()
-        assert df["primary_language"].value_counts(normalize=True)["A"] == pytest.approx(0.75, abs=0.03)
+        df = GitHubGenerator(
+            n_repositories=2000, languages=["A", "B"], language_weights=[3, 1]
+        ).generate()
+        assert df["primary_language"].value_counts(normalize=True)[
+            "A"
+        ] == pytest.approx(0.75, abs=0.03)
 
     def test_legacy_caps(self):
         df = GitHubGenerator(n_repositories=500, stars_range=[0, 100]).generate()
@@ -162,7 +176,13 @@ class TestGitHubGenerator:
 
     @pytest.mark.parametrize(
         "bad",
-        [{"popularity_exponent": 1.0}, {"languages": []}, {"language_weights": [1]}, {"reference_date": "soon"}, {"fork_ratio_beta": [0, 1]}],
+        [
+            {"popularity_exponent": 1.0},
+            {"languages": []},
+            {"language_weights": [1]},
+            {"reference_date": "soon"},
+            {"fork_ratio_beta": [0, 1]},
+        ],
     )
     def test_invalid(self, bad):
         with pytest.raises(InvalidParameterError):

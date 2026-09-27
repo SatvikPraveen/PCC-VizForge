@@ -81,7 +81,9 @@ class TestEstimators:
     def test_aki_with_binning(self):
         m = np.round(truncated_gr_sample(make_rng(4), 20_000, 1.0, 1.95) / 0.1) * 0.1
         m = m[m >= 2.0 - 1e-9]
-        assert b_value_mle(m, 2.0, bin_width=0.1).b_value == pytest.approx(1.0, abs=0.03)
+        assert b_value_mle(m, 2.0, bin_width=0.1).b_value == pytest.approx(
+            1.0, abs=0.03
+        )
         # ignoring the bin correction is biased upward
         assert b_value_mle(m, 2.0).b_value > 1.04
 
@@ -94,7 +96,10 @@ class TestEstimators:
 
     def test_shi_bolt_se_is_calibrated(self):
         """Empirical sd of b-hat across replicates should match the reported SE."""
-        ests = [b_value_mle(truncated_gr_sample(r, 400, 1.0, 2.0), 2.0) for r in spawn_rngs(8, 400)]
+        ests = [
+            b_value_mle(truncated_gr_sample(r, 400, 1.0, 2.0), 2.0)
+            for r in spawn_rngs(8, 400)
+        ]
         b = np.array([e.b_value for e in ests])
         se = np.mean([e.std_error for e in ests])
         assert b.std(ddof=1) == pytest.approx(se, rel=0.15)
@@ -163,7 +168,11 @@ class TestGenerator:
         assert df["depth_km"].between(1.0, 700.0).all()
         # parents precede their aftershocks
         after = df[df["is_aftershock"]]
-        parent_times = df.set_index("earthquake_id").loc[after["parent_id"], "time_days"].to_numpy()
+        parent_times = (
+            df.set_index("earthquake_id")
+            .loc[after["parent_id"], "time_days"]
+            .to_numpy()
+        )
         assert np.all(parent_times <= after["time_days"].to_numpy())
         assert (df.loc[~df["is_aftershock"], "parent_id"] == -1).all()
 
@@ -172,9 +181,16 @@ class TestGenerator:
         pd.testing.assert_frame_equal(g.generate(seed=1), g.generate(seed=1))
 
     def test_background_uniform_on_sphere(self):
-        df = EarthquakeGenerator(n_earthquakes=20_000, hotspots=[], **NO_AFTERSHOCKS).generate()
+        df = EarthquakeGenerator(
+            n_earthquakes=20_000, hotspots=[], **NO_AFTERSHOCKS
+        ).generate()
         # sin(latitude) ~ U(-1, 1) for sphere-uniform points
-        assert stats.kstest(np.sin(np.radians(df["latitude"])), "uniform", args=(-1, 2)).pvalue > 1e-3
+        assert (
+            stats.kstest(
+                np.sin(np.radians(df["latitude"])), "uniform", args=(-1, 2)
+            ).pvalue
+            > 1e-3
+        )
         assert set(df["region"]) == {"Global"}
 
     def test_hotspot_fractions(self):
@@ -191,7 +207,9 @@ class TestGenerator:
         df = g.generate()
         p = g.params
         a = p.aftershock_cfg
-        n_br = branching_ratio(p.b_value, a["alpha"], a["productivity"], *p.magnitude_range)
+        n_br = branching_ratio(
+            p.b_value, a["alpha"], a["productivity"], *p.magnitude_range
+        )
         # total/background = 1/(1-n) for a subcritical cascade
         assert len(df) / 20_000 == pytest.approx(1 / (1 - n_br), rel=0.03)
 
@@ -201,11 +219,16 @@ class TestGenerator:
             aftershocks={"enabled": True, "productivity": 0.3, "alpha": 0.5}, **kw
         ).generate()
         poisson = EarthquakeGenerator(**NO_AFTERSHOCKS, **kw).generate()
-        assert interevent_cv(clustered["time_days"]) > interevent_cv(poisson["time_days"]) + 0.1
+        assert (
+            interevent_cv(clustered["time_days"])
+            > interevent_cv(poisson["time_days"]) + 0.1
+        )
 
     def test_magnitude_binning(self):
         df = EarthquakeGenerator(n_earthquakes=200, magnitude_bin=0.1).generate()
-        np.testing.assert_allclose(df["magnitude"] * 10, np.round(df["magnitude"] * 10), atol=1e-9)
+        np.testing.assert_allclose(
+            df["magnitude"] * 10, np.round(df["magnitude"] * 10), atol=1e-9
+        )
 
     def test_statistics(self):
         g = EarthquakeGenerator(n_earthquakes=3000)
@@ -229,7 +252,18 @@ class TestGenerator:
             {"start_date": "yesterday"},
             {"duration_days": 1e6},
             {"hotspots": [{"name": "x"}]},
-            {"hotspots": [{"name": "a", "lat_center": 0, "lon_center": 0, "lat_range": 1, "lon_range": 1, "probability": 1.5}]},
+            {
+                "hotspots": [
+                    {
+                        "name": "a",
+                        "lat_center": 0,
+                        "lon_center": 0,
+                        "lat_range": 1,
+                        "lon_range": 1,
+                        "probability": 1.5,
+                    }
+                ]
+            },
         ],
     )
     def test_invalid(self, bad):
